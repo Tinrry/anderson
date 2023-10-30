@@ -203,8 +203,9 @@ class AndersonChebyshevDataset(Dataset):
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
-        anderson = self.data.iloc[idx, :self.L*2*2+2]
-        chebyshev = self.data.iloc[idx, self.L*2*2+2:]
+        anderson = self.data.iloc[idx, :self.L+2]
+        chebyshev = self.data.iloc[idx, self.L+2: self.L + 2 + self.n + 1]
+        # Greens = self.data.iloc[idx, self.L + 2 + self.n + 1: ]
         anderson = np.array([anderson], dtype = float)
         chebyshev = np.array([chebyshev], dtype = float)
         sample = (anderson, chebyshev)
@@ -222,7 +223,7 @@ torch.manual_seed(0)
 if __name__ == "__main__":
     L, N = 3, 250
     N_EPOCHS=1000
-    input_d = 2 * L * 2 + 2
+    input_d = L + 2
     transform = ToTensor()
     # transform = None
     train_set = AndersonChebyshevDataset(csv_file = f"L{L}N{N}.csv",L=L, n=N, transform=transform)

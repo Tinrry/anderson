@@ -107,10 +107,10 @@ def test(test_loader, criterion, device, num_models):
 # 
 
 if __name__ == "__main__":
-    L, N = 3, 25
-    N_EPOCHS=2
+    L, N = 6, 255
+    N_EPOCHS=10
 
-    input_d = 2 * L * 2 + 2
+    input_d = L * 2 + 2
     transform = ToTensor()
     # transform = None
     train_set = AndersonChebyshevDataset(L=L, n=N, transform=transform)

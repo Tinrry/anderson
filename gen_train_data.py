@@ -61,7 +61,6 @@ class Anderson():
         # system size
         self.L = l
         self.size = size
-        pass
 
     @property
     def get_u(self, low=0, high=10):
@@ -93,10 +92,14 @@ class Anderson():
 
         """
         # config
+        part = self.L // 2  # 根据对称性，进行参数缩减
+        # L=6, paras = np.array([9.0, 0.0, 2.0, 1.8, 4.0, 0.0, 0.2, 0.0])
         U = paras[0]
         ef = paras[1]
-        eis = paras[2:2 + self.L]          # 不考虑spin_up, spin_down的对称性
-        hoppings = paras[2 + self.L:]
+        eis_part = paras[2:2 + part]          # 不考虑spin_up, spin_down的对称性
+        hoppings_part = paras[2 + part:]
+        eis = np.concatenate((eis_part, -1 * eis_part))
+        hoppings = np.concatenate((hoppings_part, hoppings_part))
 
         # hop_to_xxx， hop_from_xxx都是正符号，同一个系数，在hamiltonian中已经定好了符号
         hop_to_impurity = [[hoppings[i], 0, i + 1] for i in range(self.L)]
@@ -256,16 +259,15 @@ from numpy import savetxt, loadtxt
 if __name__ == "__main__":
     debug = False
     # PARAMETERS
-    L, SIZE = 3, 1000
-    N, X_MIN, X_MAX = 250, -25, 25
+    L, SIZE = 6, 5000
+    N, X_MIN, X_MAX = 255, -25, 25
     training_size = int(SIZE * 0.8)       # training: testing = 8: 2
     training_file = f"L{L}N{N}_training{training_size}.csv"
     testing_file = f"L{L}N{N}_training{SIZE - training_size}.csv"
 
     # generate anderson model parameters
     model = Anderson(l=L, size=SIZE)     # band=3 , parameters_size = 3*2*2+2=14
-    parameters = np.vstack((model.get_u, model.get_ef, model.get_ei, model.get_ti)).T     # shape(N, L*2*2+2)
-    paras = parameters[0]
+    parameters = np.vstack((model.get_u, model.get_ef, model.get_ei, model.get_ti)).T     # shape(N, L+2)
 
     # calculate the Chebyshev coefficients
     chebyshev = Chebyshev(n=N, x_min= X_MIN, x_max= X_MAX)
@@ -296,9 +298,8 @@ if __name__ == "__main__":
         Tfs = np.row_stack((Tfs, Tf.T)) if Tfs.size else Tf
 
     # 制作数据集
-    dataset = np.concatenate((parameters, alphas), axis=1)
-    assert dataset.shape == (SIZE, L*2*2+2+N+1), f'{dataset.shape} error'
-
+    dataset = np.concatenate((parameters, alphas, Greens), axis=1)
+    assert dataset.shape == (SIZE, L + 2 + 2 * (N + 1)), f'{dataset.shape} error'
 
     savetxt(training_file, dataset[ : training_size], delimiter=',')
     savetxt(testing_file, dataset[training_size: ], delimiter=',')
