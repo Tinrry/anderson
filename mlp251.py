@@ -1,4 +1,4 @@
-import tqdm as tqdm
+from tqdm import tqdm
 from tqdm import trange
 
 import torch
@@ -11,11 +11,12 @@ from torch.utils.data import DataLoader
     
 
 class MyMLP(nn.Module):
-    def __init__(self, input_d, hidden_d, ratio=4) -> None:
+    def __init__(self, input_d, ratio=4) -> None:
         super(MyMLP, self).__init__()
         self.input_d = input_d
         self.ratio = ratio
 
+        self.flatten = nn.Flatten()
         self.linear_relu_stack = nn.Sequential(
             nn.Linear(self.input_d, self.input_d * ratio),
             nn.ReLU(),
@@ -41,10 +42,13 @@ class MyMLP(nn.Module):
             nn.ReLU(),
             nn.Linear(self.input_d * ratio, self.input_d * ratio),
             nn.ReLU(),
+            nn.Linear(self.input_d * ratio, self.input_d),
+            nn.ReLU(),
             nn.Linear(self.input_d, 1)
         )
 
     def forward(self, x):
+        x = self.flatten(x)
         x_1 = self.linear_relu_stack(x)
         return x_1
     
@@ -100,7 +104,7 @@ def test(test_loader, criterion, device, num_models):
                 samples += len(y_batch)
         print(f"for {chebyshev_i}th order, test loss : {test_loss:.2f} test accuracy: {correct/samples * 100:.2f}%")
 
-
+# 
 
 if __name__ == "__main__":
     L, N = 3, 25

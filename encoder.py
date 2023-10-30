@@ -200,7 +200,7 @@ class AndersonChebyshevDataset(Dataset):
         self.L = L
         self.n = n
         csv_file = f"L{L}N{n}.csv"
-        self.data = pd.read_csv(csv_file)
+        self.data = pd.read_csv(csv_file, header=None)
         self.transform = transform
 
     def __len__(self):
@@ -210,8 +210,8 @@ class AndersonChebyshevDataset(Dataset):
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
-        anderson = self.data.iloc[idx, :L*2*2+2]
-        chebyshev = self.data.iloc[idx, L*2*2+2:]
+        anderson = self.data.iloc[idx, :self.L*2*2+2]
+        chebyshev = self.data.iloc[idx, self.L*2*2+2:]
         anderson = np.array([anderson], dtype = float)
         chebyshev = np.array([chebyshev], dtype = float)
         sample = (anderson, chebyshev)
