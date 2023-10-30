@@ -161,12 +161,10 @@ def train(model, train_loader, n_epoch,criterion, LR, device):
             print(f" epoch : {epoch+1}/{n_epoch}  train loss: {train_loss:.10f}")
 
 
-def test(model, test_loader, criterion, device):
+def validate(model, test_loader, criterion, device):
     model = model.to(device)
 
     test_loss = 0.0
-    correct = 0
-    samples = 0
     with torch.no_grad():
         for x_batch, y_batch in tqdm(test_loader, desc=f'testing'):
             x_batch, y_batch = x_batch.to(device), y_batch.to(device)
@@ -174,9 +172,7 @@ def test(model, test_loader, criterion, device):
             y_batch = torch.squeeze(y_batch)
             loss = criterion(y_pred, y_batch)
             test_loss += loss.detach().cpu().item() / len(test_loader)
-            correct += torch.sum(torch.argmax(y_pred, dim=1) == y_batch).detach().cpu().item()
-            samples += len(y_batch)
-    print(f"test loss : {test_loss:.2f} test accuracy: {correct/samples * 100:.2f}%")
+    print(f"test loss : {test_loss:.10f}")
 
 from torch.utils.data import Dataset
 import pandas as pd
@@ -194,10 +190,9 @@ class ToTensor(object):
 class AndersonChebyshevDataset(Dataset):
     # anderson and chevbyshev datasets
         
-    def __init__(self, L=3, n=25, transform=None):
+    def __init__(self, csv_file, L=3, n=25, transform=None):
         self.L = L
         self.n = n
-        csv_file = f"L{L}N{n}.csv"
         self.data = pd.read_csv(csv_file, header=None)
         self.transform = transform
 
@@ -230,27 +225,20 @@ if __name__ == "__main__":
     input_d = 2 * L * 2 + 2
     transform = ToTensor()
     # transform = None
-    train_set = AndersonChebyshevDataset(L=L, n=N, transform=transform)
-    train_loader = DataLoader(train_set, batch_size=200, shuffle=True)
+    train_set = AndersonChebyshevDataset(csv_file = f"L{L}N{N}.csv",L=L, n=N, transform=transform)
+    test_set =  AndersonChebyshevDataset(csv_file = f"L{L}N{N}.csv",L=L, n=N, transform=transform)
+
+    train_loader = DataLoader(train_set, shuffle=True, batch_size=128)
+    test_loader = DataLoader(test_set, shuffle=False, batch_size=128)
+
     device = torch.device('cuda' if torch.cuda.is_available() else "cpu")
     model = MyViT((1, input_d), n_patch=input_d, blocks=2, n_heads=2, hidden_d=8, out_d=N+1).to(device)
-
-    # debug = False
-    # if debug:
-    #     # MNIST
-    #     images = torch.randn((7, 1, 28, 28))
-    #     output = model(images)
-    #     plt.imshow(position_embedding(49, 8),cmap='hot', interpolation='nearest')
-    #     plt.show()
-    
-
     
     criterious = nn.MSELoss()
-    train(model, train_loader, n_epoch=N_EPOCHS, criterion=criterious, LR=0.005, device=device)
-    # save model 
-    torch.save(model.state_dict(), 'encoder.pt')
+    # train(model, train_loader, n_epoch=N_EPOCHS, criterion=criterious, LR=0.005, device=device)
+    # # save model 
+    # torch.save(model.state_dict(), 'encoder.pt')
 
     # load model
     model.load_state_dict(torch.load('encoder.pt'))
-    # test(model, test_loader, criterion=criterious, device=device)
-
+    validate(model, test_loader, criterion=criterious, device=device)

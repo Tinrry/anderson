@@ -1,10 +1,7 @@
-import os, sys
 import numpy as np
 from quspin.basis import spinful_fermion_basis_1d, spinful_fermion_basis_general
 from quspin.operators import hamiltonian, quantum_LinearOperator
 import scipy.sparse as sp
-import numexpr, cProfile
-import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 
@@ -261,8 +258,10 @@ if __name__ == "__main__":
     # PARAMETERS
     L, SIZE = 3, 1000
     N, X_MIN, X_MAX = 250, -25, 25
-    csv_file = f"L{L}N{N}.csv"
-    
+    training_size = int(SIZE * 0.8)       # training: testing = 8: 2
+    training_file = f"L{L}N{N}_training{training_size}.csv"
+    testing_file = f"L{L}N{N}_training{SIZE - training_size}.csv"
+
     # generate anderson model parameters
     model = Anderson(l=L, size=SIZE)     # band=3 , parameters_size = 3*2*2+2=14
     parameters = np.vstack((model.get_u, model.get_ef, model.get_ei, model.get_ti)).T     # shape(N, L*2*2+2)
@@ -299,8 +298,11 @@ if __name__ == "__main__":
     # 制作数据集
     dataset = np.concatenate((parameters, alphas), axis=1)
     assert dataset.shape == (SIZE, L*2*2+2+N+1), f'{dataset.shape} error'
-    savetxt(csv_file, dataset, delimiter=',')
-    loaddata = loadtxt(csv_file, delimiter=',')
+
+
+    savetxt(training_file, dataset[ : training_size], delimiter=',')
+    savetxt(testing_file, dataset[training_size: ], delimiter=',')
+    loaddata = loadtxt(training_file, delimiter=',')
     print(f"dataset[0] : {dataset[0]}")
     print(f"loaddata[0] : {loaddata[0]}")
     assert dataset[0].sum()-loaddata[0].sum()<0.0001, "save and load data not the same."
