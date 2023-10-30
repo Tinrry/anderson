@@ -53,12 +53,12 @@ class MyMLP(nn.Module):
         return x_1
     
 
-def train(train_loader, n_epoch,criterion, LR, device, num_models):
+def train(train_loader, n_epoch,criterion, lr, device, num_models):
     for chebyshev_i in range(num_models):
         # init model
         model = MyMLP(input_d=14, ratio=2)
         # 第 i 个 model 预测 第i个chebyshev 的系数
-        opt = torch.optim.Adam(model.parameters(), lr=LR)
+        opt = torch.optim.Adam(model.parameters(), lr=lr)
         model = model.to(device)
 
         train_acc = 0.0
@@ -91,8 +91,6 @@ def test(test_loader, criterion, device, num_models):
         model = model.to(device)
 
         test_loss = 0.0
-        correct = 0
-        samples = 0
         with torch.no_grad():
             for x_batch, y_batch in tqdm(test_loader, desc=f'testing'):
                 x_batch, y_batch = x_batch.to(device), y_batch.to(device)
@@ -100,15 +98,13 @@ def test(test_loader, criterion, device, num_models):
                 y_batch = torch.squeeze(y_batch)[chebyshev_i]
                 loss = criterion(y_pred, y_batch)
                 test_loss += loss.detach().cpu().item() / len(test_loader)
-                correct += torch.sum(torch.argmax(y_pred, dim=1) == y_batch).detach().cpu().item()
-                samples += len(y_batch)
-        print(f"for {chebyshev_i}th order, test loss : {test_loss:.2f} test accuracy: {correct/samples * 100:.2f}%")
+        print(f"for {chebyshev_i}th order, test loss : {test_loss:.2f}")
 
-# 
 
 if __name__ == "__main__":
     L, N, SIZE = 6, 255 ,5000
     N_EPOCHS=10
+    LR=0.000005
     # num_models 是 N+1, (1, x, 2-x, 3-x, N-x)
 
     training_size = int(SIZE * 0.8)       # training: testing = 8: 2
@@ -127,6 +123,6 @@ if __name__ == "__main__":
     device = torch.device('cuda' if torch.cuda.is_available() else "cpu")
     criterious = nn.MSELoss()
     # loss is too small
-    train(train_loader, n_epoch=N_EPOCHS, criterion=criterious, LR=0.000005, device=device, num_models=N+1)
+    train(train_loader, n_epoch=N_EPOCHS, criterion=criterious, lr=LR, device=device, num_models=N+1)
     # test(test_loader=)
     
