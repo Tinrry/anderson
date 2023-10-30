@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 
 
-def patchify(images, n_patch):
+def patchify(images, n_patch,device):
     n, c, h= images.shape
     patch_size = h // n_patch
 
@@ -20,7 +20,7 @@ def patchify(images, n_patch):
         for i in range(n_patch):
             patch = image[:, i * patch_size: (i+1) * patch_size]
             patches[idx, i] = patch.flatten()
-    return patches
+    return patches.to(device)
 
 
 def position_embedding(pos, dim):
@@ -120,10 +120,10 @@ class MyViT(nn.Module):
             nn.Softmax(dim=-1)
         )
         
-    def forward(self,images):
+    def forward(self,images, device):
         n, _, _ = images.shape
         # patchify
-        patches = patchify(images, self.n_patch)
+        patches = patchify(images, self.n_patch, device)
         tokens = self.linear(patches)
 
         # add class token
@@ -138,18 +138,17 @@ class MyViT(nn.Module):
         return out
 
 
-def train(model, train_loader, N_EPOCHS,criterion, LR, device):
+def train(model, train_loader, n_epoch,criterion, LR, device):
     
     opt = torch.optim.Adam(model.parameters(), lr=LR)
-    model = model.to(device)
 
     train_acc = 0.0
-    for epoch in trange(N_EPOCHS, desc='Training'):
+    for epoch in trange(n_epoch, desc='Training'):
         train_loss = 0.0
         for x_batch, y_batch in tqdm(train_loader, desc=f'epoch {epoch+1} in training', leave=False):
-            x_batch, y_batch = x_batch.to(device), y_batch.to(device)
-            y_pred = model(x_batch)
             y_batch = torch.squeeze(y_batch)
+            x_batch, y_batch = x_batch.to(device), y_batch.to(device)
+            y_pred = model(x_batch, device)
             loss = criterion(y_pred, y_batch)
             # backward
             opt.zero_grad()
@@ -157,11 +156,10 @@ def train(model, train_loader, N_EPOCHS,criterion, LR, device):
             # update parameters
             opt.step()
 
-        # if (epoch+1) % 10 == 0:
+        if (epoch+1) % 10 == 0:
         # record loss and accuracy
-        train_loss += loss.detach().cpu().item() / len(train_loader)
-        train_acc += (y_pred.max(1)[1] == y_batch).sum().item() / len(train_loader)
-        print(f" epoch : {epoch+1}/{N_EPOCHS}  train loss: {train_loss:.3f} train accuracy: {train_acc * 100:.3f}%")
+            train_loss += loss.detach().cpu().item() / len(train_loader)
+            print(f" epoch : {epoch+1}/{n_epoch}  train loss: {train_loss:.3f}")
 
 
 def test(model, test_loader, criterion, device):
@@ -230,12 +228,14 @@ torch.manual_seed(0)
 
 if __name__ == "__main__":
     L, N = 3, 250
+    N_EPOCHS=1000
     input_d = 2 * L * 2 + 2
     transform = ToTensor()
     # transform = None
     train_set = AndersonChebyshevDataset(L=L, n=N, transform=transform)
-    train_loader = DataLoader(train_set, batch_size=10, shuffle=True)
-    model = MyViT((1, input_d), n_patch=input_d, blocks=2, n_heads=2, hidden_d=8, out_d=N+1)
+    train_loader = DataLoader(train_set, batch_size=200, shuffle=True)
+    device = torch.device('cuda' if torch.cuda.is_available() else "cpu")
+    model = MyViT((1, input_d), n_patch=input_d, blocks=2, n_heads=2, hidden_d=8, out_d=N+1).to(device)
 
     # debug = False
     # if debug:
@@ -246,11 +246,11 @@ if __name__ == "__main__":
     #     plt.show()
     
 
-    device = torch.device('cuda' if torch.cuda.is_available() else "cpu")
+    
     criterious = nn.MSELoss()
-    train(model, train_loader, N_EPOCHS=2, criterion=criterious, LR=0.005, device=device)
+    train(model, train_loader, n_epoch=N_EPOCHS, criterion=criterious, LR=0.005, device=device)
     # save model 
-    torch.save(model.state_dict(model), 'encoder.pt')
+    torch.save(model.state_dict(), 'encoder.pt')
 
     # load model
     model.load_state_dict(torch.load('encoder.pt'))
