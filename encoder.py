@@ -168,7 +168,7 @@ def validate(model, test_loader, criterion, device):
     with torch.no_grad():
         for x_batch, y_batch in tqdm(test_loader, desc=f'testing'):
             x_batch, y_batch = x_batch.to(device), y_batch.to(device)
-            y_pred = model(x_batch)
+            y_pred = model(x_batch, device)
             y_batch = torch.squeeze(y_batch)
             loss = criterion(y_pred, y_batch)
             test_loss += loss.detach().cpu().item() / len(test_loader)
