@@ -101,6 +101,12 @@ def test(test_loader, criterion, device, num_models):
         print(f"for {chebyshev_i}th order, test loss : {test_loss:.2f}")
 
 
+def compose_chebyshev_alpha():
+    # save alphas predict by nn, and compute the mse and plot
+    pass
+
+
+
 if __name__ == "__main__":
     L, N, SIZE = 6, 255 ,5000
     N_EPOCHS=10

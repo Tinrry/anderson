@@ -216,6 +216,12 @@ class AndersonChebyshevDataset(Dataset):
         return sample
 
 
+def plot_spectrum():
+    # plot Greens
+    # plot chebyshev, TF, by alphas--labels
+    # plot chebyshev, TF, by alphas--nn-predict
+
+
 np.random.seed(0)
 torch.manual_seed(0)
 
