@@ -111,7 +111,7 @@ if __name__ == "__main__":
     N_EPOCHS=10
     # num_models 是 N+1, (1, x, 2-x, 3-x, N-x)
 
-    input_d = L * 2 + 2
+    input_d = L + 2
     transform = ToTensor()
     # transform = None
     train_set = AndersonChebyshevDataset(L=L, n=N, transform=transform)
