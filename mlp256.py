@@ -109,6 +109,7 @@ def test(test_loader, criterion, device, num_models):
 if __name__ == "__main__":
     L, N = 6, 255
     N_EPOCHS=10
+    # num_models 是 N+1, (1, x, 2-x, 3-x, N-x)
 
     input_d = L * 2 + 2
     transform = ToTensor()
@@ -118,5 +119,6 @@ if __name__ == "__main__":
 
     device = torch.device('cuda' if torch.cuda.is_available() else "cpu")
     criterious = nn.MSELoss()
-    train(train_loader, n_epoch=N_EPOCHS, criterion=criterious, LR=0.005, device=device, num_models=N+1)
+    # loss is too small
+    train(train_loader, n_epoch=N_EPOCHS, criterion=criterious, LR=0.000005, device=device, num_models=N+1)
     # test(test_loader=)

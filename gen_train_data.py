@@ -255,6 +255,7 @@ class Chebyshev():
     
 
 from numpy import savetxt, loadtxt
+from tqdm import tqdm
 
 if __name__ == "__main__":
     debug = False
@@ -282,7 +283,7 @@ if __name__ == "__main__":
     Greens = np.array([])
     alphas = np.array([])
     Tfs = np.array([])
-    for paras in parameters:
+    for paras in tqdm(parameters, desc=f"generate data", leave=False):
         Green = model.spectral_function_fermion(omegas, paras, eta=0.55)
         Greens = np.row_stack((Greens, Green.T)) if Greens.size else Green
 
