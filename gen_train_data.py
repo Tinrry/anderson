@@ -259,8 +259,8 @@ from numpy import savetxt, loadtxt
 if __name__ == "__main__":
     debug = False
     # PARAMETERS
-    L, SIZE = 3, 2
-    N, X_MIN, X_MAX = 25, -25, 25
+    L, SIZE = 3, 1000
+    N, X_MIN, X_MAX = 250, -25, 25
     csv_file = f"L{L}N{N}.csv"
     
     # generate anderson model parameters

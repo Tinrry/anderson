@@ -228,7 +228,7 @@ torch.manual_seed(0)
 
 
 if __name__ == "__main__":
-    L, N = 3, 25
+    L, N = 3, 250
     input_d = 2 * L * 2 + 2
     transform = ToTensor()
     # transform = None
