@@ -174,6 +174,7 @@ def test(model, test_loader, criterion, device):
         for x_batch, y_batch in tqdm(test_loader, desc=f'testing'):
             x_batch, y_batch = x_batch.to(device), y_batch.to(device)
             y_pred = model(x_batch)
+            y_batch = torch.squeeze(y_batch)
             loss = criterion(y_pred, y_batch)
             test_loss += loss.detach().cpu().item() / len(test_loader)
             correct += torch.sum(torch.argmax(y_pred, dim=1) == y_batch).detach().cpu().item()
@@ -248,5 +249,10 @@ if __name__ == "__main__":
     device = torch.device('cuda' if torch.cuda.is_available() else "cpu")
     criterious = nn.MSELoss()
     train(model, train_loader, N_EPOCHS=2, criterion=criterious, LR=0.005, device=device)
+    # save model 
+    torch.save(model.state_dict(model), 'encoder.pt')
+
+    # load model
+    model.load_state_dict(torch.load('encoder.pt'))
     # test(model, test_loader, criterion=criterious, device=device)
 
