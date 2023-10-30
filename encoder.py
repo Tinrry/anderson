@@ -156,9 +156,9 @@ def train(model, train_loader, n_epoch,criterion, LR, device):
             opt.step()
 
             train_loss += loss.detach().cpu().item() / len(train_loader)
-        if (epoch) % 10 == 0:
+        if (epoch+1) % 10 == 0:
         # record loss and accuracy
-            print(f" epoch : {epoch+1}/{n_epoch}  train loss: {train_loss:.3f}")
+            print(f" epoch : {epoch+1}/{n_epoch}  train loss: {train_loss:.10f}")
 
 
 def test(model, test_loader, criterion, device):
