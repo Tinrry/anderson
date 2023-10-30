@@ -71,11 +71,11 @@ def train(train_loader, n_epoch,criterion, LR, device, num_models):
                 # update parameters
                 opt.step()
 
-            # if (epoch+1) % 10 == 0:
+            if (epoch+1) % 10 == 0:
             # record loss and accuracy
-            train_loss += loss.detach().cpu().item() / len(train_loader)
-            train_acc += (y_pred.max(1)[1] == y_batch).sum().item() / len(train_loader)
-            print(f" epoch : {epoch+1}/{N_EPOCHS}  train loss: {train_loss:.3f} train accuracy: {train_acc * 100:.3f}%")
+                train_loss += loss.detach().cpu().item() / len(train_loader)
+                train_acc += (y_pred.max(1)[1] == y_batch).sum().item() / len(train_loader)
+                print(f" epoch : {epoch+1}/{n_epoch}  train loss: {train_loss:.3f} train accuracy: {train_acc * 100:.3f}%")
 
         # save model
         torch.save(model.state_dict(), f'chebyshev_{chebyshev_i}.pt')
@@ -103,9 +103,8 @@ def test(test_loader, criterion, device, num_models):
 
 
 if __name__ == "__main__":
-    L, N = 3, 250
-    N_EPOCHS=100
-
+    L, N = 3, 25
+    N_EPOCHS=2
 
     input_d = 2 * L * 2 + 2
     transform = ToTensor()
