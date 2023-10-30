@@ -142,7 +142,6 @@ def train(model, train_loader, n_epoch,criterion, LR, device):
     
     opt = torch.optim.Adam(model.parameters(), lr=LR)
 
-    train_acc = 0.0
     for epoch in trange(n_epoch, desc='Training'):
         train_loss = 0.0
         for x_batch, y_batch in tqdm(train_loader, desc=f'epoch {epoch+1} in training', leave=False):
@@ -156,9 +155,9 @@ def train(model, train_loader, n_epoch,criterion, LR, device):
             # update parameters
             opt.step()
 
-        if (epoch+1) % 10 == 0:
-        # record loss and accuracy
             train_loss += loss.detach().cpu().item() / len(train_loader)
+        if (epoch) % 10 == 0:
+        # record loss and accuracy
             print(f" epoch : {epoch+1}/{n_epoch}  train loss: {train_loss:.3f}")
 
 
@@ -181,7 +180,6 @@ def test(model, test_loader, criterion, device):
 
 from torch.utils.data import Dataset
 import pandas as pd
-from numpy import loadtxt
     
 
 class ToTensor(object):
