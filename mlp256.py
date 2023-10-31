@@ -107,18 +107,26 @@ def test(test_loader, criterion, device, num_models):
 # 
 
 if __name__ == "__main__":
-    L, N = 6, 255
+    L, N, SIZE = 6, 255 ,5000
     N_EPOCHS=10
     # num_models 是 N+1, (1, x, 2-x, 3-x, N-x)
+
+    training_size = int(SIZE * 0.8)       # training: testing = 8: 2
+    training_file = f"L{L}N{N}_training{training_size}.csv"
+    testing_file = f"L{L}N{N}_training{SIZE - training_size}.csv"
 
     input_d = L + 2
     transform = ToTensor()
     # transform = None
-    train_set = AndersonChebyshevDataset(L=L, n=N, transform=transform)
-    train_loader = DataLoader(train_set, batch_size=10, shuffle=True)
+    train_set = AndersonChebyshevDataset(csv_file=training_file, L=L, n=N, transform=transform)
+    test_set =  AndersonChebyshevDataset(csv_file =testing_file, L=L, n=N, transform=transform)
+
+    train_loader = DataLoader(train_set, shuffle=True, batch_size=128)
+    test_loader = DataLoader(test_set, shuffle=False, batch_size=128)
 
     device = torch.device('cuda' if torch.cuda.is_available() else "cpu")
     criterious = nn.MSELoss()
     # loss is too small
     train(train_loader, n_epoch=N_EPOCHS, criterion=criterious, LR=0.000005, device=device, num_models=N+1)
     # test(test_loader=)
+    
