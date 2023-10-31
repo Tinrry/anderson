@@ -53,10 +53,10 @@ class MyMLP(nn.Module):
         return x_1
     
 
-def train(train_loader, n_epoch,criterion, lr, device, num_models):
+def train(train_loader, input_d, ratio, n_epoch,criterion, lr, device, num_models):
     for chebyshev_i in range(num_models):
         # init model
-        model = MyMLP(input_d=14, ratio=2)
+        model = MyMLP(input_d, ratio=ratio)
         # 第 i 个 model 预测 第i个chebyshev 的系数
         opt = torch.optim.Adam(model.parameters(), lr=lr)
         model = model.to(device)
@@ -126,6 +126,7 @@ if __name__ == "__main__":
     L, N, SIZE = 6, 255 ,5000
     N_EPOCHS=10
     LR=0.000005
+    RATIO = 2
     # num_models 是 N+1, (1, x, 2-x, 3-x, N-x)
     num_models = N + 1
     train_model = False
@@ -148,7 +149,7 @@ if __name__ == "__main__":
     # every time we save model in train function, and load model in compose_chebyshev_alpha, 256 models
     # loss is too small
     if train_model:
-        train(train_loader, n_epoch=N_EPOCHS, criterion=criterious, lr=LR, device=device, num_models=num_models)
+        train(train_loader, input_d=input_d, ratio=RATIO, n_epoch=N_EPOCHS, criterion=criterious, lr=LR, device=device, num_models=num_models)
     # todo 当前函数没有数据集，还未测试，有没有bug
     nn_alphas = compose_chebyshev_alpha(plot_loader=test_loader, criterion=criterious, device=device, num_models=num_models, test=False)
     plot_spectrum(plot_loader=test_loader, models=get_models, omegas=omegas, T_pred=T_pred, x_grid=x_grid)
