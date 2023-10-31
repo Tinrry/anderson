@@ -300,13 +300,14 @@ if __name__ == "__main__":
 
     # 制作数据集
     dataset = np.concatenate((parameters, alphas, Greens), axis=1)
-    assert dataset.shape == (SIZE, L + 2 + 2 * (N + 1)), f'{dataset.shape} error'
 
     savetxt(training_file, dataset[ : training_size], delimiter=',')
     savetxt(testing_file, dataset[training_size: ], delimiter=',')
     loaddata = loadtxt(training_file, delimiter=',')
     print(f"dataset[0] : {dataset[0]}")
     print(f"loaddata[0] : {loaddata[0]}")
+    
+    assert dataset.shape == (SIZE, L + 2 + 2 * (N + 1)), f'{dataset.shape} error'
     assert dataset[0].sum()-loaddata[0].sum()<0.0001, "save and load data not the same."
     
     if debug == True:
