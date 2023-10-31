@@ -216,10 +216,33 @@ class AndersonChebyshevDataset(Dataset):
         return sample
 
 
-def plot_spectrum():
+def plot_spectrum(plot_loader,models, omegas, T_pred, x_grid):
     # plot Greens
     # plot chebyshev, TF, by alphas--labels
     # plot chebyshev, TF, by alphas--nn-predict
+    nrows, ncols = 8, 4
+
+    # compute spectrum by alpha
+    label_Tfs = np.array([])
+    nn_Tfs = np.array([])
+    for idx in range(nrows * ncols):
+        label_a = labels_alpha[idx]
+        nn_a = nn_alpha[idx]
+
+        # compute chebyshev function
+        label_Tf = T_pred @ label_a
+        nn_Tf = T_pred @ nn_a
+        label_Tfs = np.row_stack((label_Tfs, label_Tf)) if label_Tfs.size else label_Tf
+        nn_Tfs = np.row_stack((nn_Tfs, nn_Tf)) if nn_Tfs.size else nn_Tf
+
+    idx = 0
+    fig, axs = plt.subplot(nrows, ncols)
+    for i in range(nrows):
+        for j in range(ncols):
+            axs[i, j].plot(omegas, Greens[idx])
+            axs[i, j].plot(x_grid, label_Tfs[idx])
+            axs[i, j].plot(x_grid, nn_Tfs[idx])
+    fig.suptitle('Greens, label_Tfs, nn_Tfs, spectrum plot')
 
 
 np.random.seed(0)
@@ -249,3 +272,4 @@ if __name__ == "__main__":
     # load model
     model.load_state_dict(torch.load('encoder.pt'))
     validate(model, test_loader, criterion=criterious, device=device)
+    plot_spectrum(test_loader, models=model, omegas=omegas, T_pred=T_pred, x_grid=x_grid)

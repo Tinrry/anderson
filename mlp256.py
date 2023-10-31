@@ -84,34 +84,51 @@ def train(train_loader, n_epoch,criterion, lr, device, num_models):
         # save model
         torch.save(model.state_dict(), f'chebyshev_{chebyshev_i}.pt')
 
+import numpy as np
 
-def test(test_loader, criterion, device, num_models):
+def compose_chebyshev_alpha(plot_loader, criterion, device, num_models, test=False):
+    models = get_models(pre_name='chebyshev', num_models=num_models)
+    orders = np.array([])
     for chebyshev_i in range(num_models):
-        model = torch.load_state_dict(torch.load(f'chebyshev_{chebyshev_i}.pt'))
-        model = model.to(device)
+        model_i = models[chebyshev_i]
+        model_i = model_i.to(device)
 
+        nn_alphas = np.array([])
         test_loss = 0.0
         with torch.no_grad():
             for x_batch, y_batch in tqdm(test_loader, desc=f'testing'):
                 x_batch, y_batch = x_batch.to(device), y_batch.to(device)
-                y_pred = model(x_batch)
+                y_pred = model_i(x_batch)           # scalar
+                nn_alphas = np.row_stack((nn_alphas, y_pred)) if nn_alphas.size else y_pred
+
                 y_batch = torch.squeeze(y_batch)[chebyshev_i]
                 loss = criterion(y_pred, y_batch)
                 test_loss += loss.detach().cpu().item() / len(test_loader)
-        print(f"for {chebyshev_i}th order, test loss : {test_loss:.2f}")
+        if test:
+            print(f"for {chebyshev_i}th order, test loss : {test_loss:.2f}")
+        orders = np.column_stack((orders, nn_alphas)) if orders.size else nn_alphas
+        return orders
 
+def get_models(pre_name, num_models):
+    models = np.array([])
+    for chebyshev_i in range(num_models):
+        model_name = f'{pre_name}_{chebyshev_i}.pt'
+        model_i = torch.load_state_dict(torch.load(model_name))
+        model_i = model_i.to(device)
+        models = np.row_stack((models, model_i)) if models.size else model_i
+    return models
 
-def compose_chebyshev_alpha():
-    # save alphas predict by nn, and compute the mse and plot
-    pass
-
+from encoder import plot_spectrum
 
 
 if __name__ == "__main__":
+    # hyper-parameters
     L, N, SIZE = 6, 255 ,5000
     N_EPOCHS=10
     LR=0.000005
     # num_models 是 N+1, (1, x, 2-x, 3-x, N-x)
+    num_models = N + 1
+    train_model = False
 
     training_size = int(SIZE * 0.8)       # training: testing = 8: 2
     training_file = f"L{L}N{N}_training{training_size}.csv"
@@ -128,7 +145,10 @@ if __name__ == "__main__":
 
     device = torch.device('cuda' if torch.cuda.is_available() else "cpu")
     criterious = nn.MSELoss()
+    # every time we save model in train function, and load model in compose_chebyshev_alpha, 256 models
     # loss is too small
-    train(train_loader, n_epoch=N_EPOCHS, criterion=criterious, lr=LR, device=device, num_models=N+1)
-    # test(test_loader=)
-    
+    if train_model:
+        train(train_loader, n_epoch=N_EPOCHS, criterion=criterious, lr=LR, device=device, num_models=num_models)
+    # todo 当前函数没有数据集，还未测试，有没有bug
+    nn_alphas = compose_chebyshev_alpha(plot_loader=test_loader, criterion=criterious, device=device, num_models=num_models, test=False)
+    plot_spectrum(plot_loader=test_loader, models=get_models, omegas=omegas, T_pred=T_pred, x_grid=x_grid)
