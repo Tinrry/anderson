@@ -1,0 +1,13 @@
+{
+    "L": 6,
+    "N": 255,
+    "N_EPOCHS": 1000,
+    "batch_size": 128,
+    "train_csv": "L6N255.csv",
+    "test_csv": "L6N255.csv",
+    // for transformers
+    "blocks": 2,
+    "n_heads": 2,
+    "hidden_d": 8,
+    
+}

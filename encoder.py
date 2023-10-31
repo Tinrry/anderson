@@ -244,25 +244,33 @@ def plot_spectrum(plot_loader,models, omegas, T_pred, x_grid):
             axs[i, j].plot(x_grid, nn_Tfs[idx])
     fig.suptitle('Greens, label_Tfs, nn_Tfs, spectrum plot')
 
+from json import load
+
+def load_config(config_name):
+    with open(config_name) as f:
+        config = load(f)
+    return config
 
 np.random.seed(0)
 torch.manual_seed(0)
 
 
 if __name__ == "__main__":
-    L, N = 3, 250
-    N_EPOCHS=1000
+    config = load_config('config_L6.json')
+    L, N = config["L"], config["N"]
+    N_EPOCHS=config["N_EPOCHS"]
+
     input_d = L + 2
     transform = ToTensor()
     # transform = None
-    train_set = AndersonChebyshevDataset(csv_file = f"L{L}N{N}.csv",L=L, n=N, transform=transform)
-    test_set =  AndersonChebyshevDataset(csv_file = f"L{L}N{N}.csv",L=L, n=N, transform=transform)
+    train_set = AndersonChebyshevDataset(csv_file = config["train_csv"], L=L, n=N, transform=transform)
+    test_set =  AndersonChebyshevDataset(csv_file = config["test_csv"], L=L, n=N, transform=transform)
 
-    train_loader = DataLoader(train_set, shuffle=True, batch_size=128)
-    test_loader = DataLoader(test_set, shuffle=False, batch_size=128)
+    train_loader = DataLoader(train_set, shuffle=True, batch_size=config["batch_size"])
+    test_loader = DataLoader(test_set, shuffle=False, batch_size=config["batch_size"])
 
     device = torch.device('cuda' if torch.cuda.is_available() else "cpu")
-    model = MyViT((1, input_d), n_patch=input_d, blocks=2, n_heads=2, hidden_d=8, out_d=N+1).to(device)
+    model = MyViT((1, input_d), n_patch=input_d, blocks=config['blocks'], n_heads=config['n_heads'], hidden_d=config['hidden_d'], out_d=N+1).to(device)
     
     criterious = nn.MSELoss()
     # train(model, train_loader, n_epoch=N_EPOCHS, criterion=criterious, LR=0.005, device=device)
