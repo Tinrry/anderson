@@ -4,6 +4,9 @@ from quspin.operators import hamiltonian, quantum_LinearOperator
 import scipy.sparse as sp
 import matplotlib.pyplot as plt
 
+from numpy import savetxt, loadtxt
+from tqdm import tqdm
+
 
 np.random.seed(123)
 
@@ -59,6 +62,7 @@ class LHS(sp.linalg.LinearOperator):
 class Anderson():
     def __init__(self, l, size):
         # system size
+        assert l % 2 == 0, 'the L should L%2==0'
         self.L = l
         self.size = size
 
@@ -74,15 +78,13 @@ class Anderson():
     
     @property 
     def get_ei(self, low=-5, high=5):
-        ei_up = np.random.uniform(low=low, high=high, size=(self.L, self.size))
-        ei_down = np.random.uniform(low=low, high=high, size=(self.L, self.size))
-        return np.vstack((ei_up, ei_down))
+        ei = np.random.uniform(low=low, high=high, size=(self.L//2, self.size))
+        return ei
 
     @property
     def get_ti(self, low=0, high=1.5):
-        ti_up = np.random.uniform(low=low, high=high, size=(self.L, self.size))
-        ti_down = np.random.uniform(low=low, high=high, size=(self.L, self.size))
-        return np.vstack((ti_up, ti_down))
+        ti = np.random.uniform(low=low, high=high, size=(self.L//2, self.size))
+        return ti
 
     def spectral_function_fermion(self, omegas, paras, eta=0.6):
         """
@@ -254,17 +256,14 @@ class Chebyshev():
         return T_pred
     
 
-from numpy import savetxt, loadtxt
-from tqdm import tqdm
-
 if __name__ == "__main__":
     debug = False
     # PARAMETERS
-    L, SIZE = 6, 5000
+    L, SIZE = 6, 5
     N, X_MIN, X_MAX = 255, -25, 25
     training_size = int(SIZE * 0.8)       # training: testing = 8: 2
-    training_file = f"L{L}N{N}_training{training_size}.csv"
-    testing_file = f"L{L}N{N}_training{SIZE - training_size}.csv"
+    training_file = f"L{L}N{N}_training_{training_size}.csv"
+    testing_file = f"L{L}N{N}_testing_{SIZE - training_size}.csv"
 
     # generate anderson model parameters
     model = Anderson(l=L, size=SIZE)     # band=3 , parameters_size = 3*2*2+2=14
@@ -304,13 +303,13 @@ if __name__ == "__main__":
     savetxt(training_file, dataset[ : training_size], delimiter=',')
     savetxt(testing_file, dataset[training_size: ], delimiter=',')
     loaddata = loadtxt(training_file, delimiter=',')
-    print(f"dataset[0] : {dataset[0]}")
-    print(f"loaddata[0] : {loaddata[0]}")
     
     assert dataset.shape == (SIZE, L + 2 + 2 * (N + 1)), f'{dataset.shape} error'
     assert dataset[0].sum()-loaddata[0].sum()<0.0001, "save and load data not the same."
     
     if debug == True:
+        print(f"dataset[0] : {dataset[0]}")
+        print(f"loaddata[0] : {loaddata[0]}")
         fig, axs = plt.subplots(2)
         axs[0].set_title('two cases anderson and chebyshev spectrum')
         for i in range(2):
