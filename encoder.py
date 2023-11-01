@@ -216,7 +216,7 @@ class AndersonChebyshevDataset(Dataset):
     def __init__(self, csv_file, L=3, n=25, transform=None):
         self.L = L
         self.n = n
-        self.data = pd.read_csv(csv_file, header=None)
+        self.data = pd.read_csv(csv_file)
         self.transform = transform
 
     def __len__(self):
@@ -245,7 +245,7 @@ def plot_spectrum(plot_loader, model, omegas_csv, nrows, ncols, model_flag):
     # plot Greens
     # plot chebyshev, TF, by alphas--labels
     # plot chebyshev, TF, by alphas--nn-predict
-    hypers = pd.read_csv(filepath_or_buffer=omegas_csv, header=None)
+    hypers = pd.read_csv(filepath_or_buffer=omegas_csv)
     meta_len = config["N"] + 1
     omegas = hypers.iloc[0, : meta_len]
     T_pred = hypers.iloc[0, meta_len: meta_len * 2]
