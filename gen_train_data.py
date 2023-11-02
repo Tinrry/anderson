@@ -261,7 +261,7 @@ import os
 if __name__ == "__main__":
     debug = True
     # PARAMETERS
-    L, SIZE = 6, 3
+    L, SIZE = 6, 5000
     N, X_MIN, X_MAX = 255, -25, 25
     training_size = int(SIZE * 0.8)       # training: testing = 8: 2
     training_file = f"L{L}N{N}_training_{training_size}.csv"
@@ -335,5 +335,5 @@ if __name__ == "__main__":
             print(Green[:10])
             print(20*'-')
             print(x_grid[:10])
-            print(y_k[:10])
+            print(Tf[:10])
 
