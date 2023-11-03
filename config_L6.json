@@ -2,11 +2,9 @@
     "_comment1": "anderson",
     "L": 6,
     "N": 255,
-    "N_EPOCHS": 2,
-    "LR": 0.000005,
+    "N_EPOCHS": 50,
+    "LR": 0.0005,
     "batch_size": 128,
-    "train_csv": "L6N255.csv",
-    "test_csv": "L6N255.csv",
     "omegas_csv": "L6N255_omegas_T_pred_x_grid.csv",
 
     "_comment2": "specific for transformer model",
@@ -20,7 +18,7 @@
     "RATIO": 2,
 
     "_comment4": "specific for generate dataset",
-    "SIZE": 5
+    "SIZE": 5000
 
 
 

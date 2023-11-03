@@ -1,14 +1,16 @@
+import json
+import numpy as np
 from tqdm import tqdm
 from tqdm import trange
 
 import torch
 import torch.nn as nn
 
-from utils import ToTensor
-from encoder import AndersonChebyshevDataset
 from torch.utils.data import DataLoader
 
-    
+from utils import AndersonChebyshevDataset
+from utils import ToTensor
+
 
 class MyMLP(nn.Module):
     def __init__(self, input_d, ratio=4) -> None:
@@ -51,9 +53,9 @@ class MyMLP(nn.Module):
         x = self.flatten(x)
         x_1 = self.linear_relu_stack(x)
         return x_1
-    
 
-def train(train_loader, input_d, ratio, n_epoch,criterion, lr, device, num_models):
+
+def train(train_loader, input_d, ratio, n_epoch, criterion, lr, device, num_models):
     for chebyshev_i in range(num_models):
         # init model
         model = MyMLP(input_d, ratio=ratio).to(device=device)
@@ -77,17 +79,19 @@ def train(train_loader, input_d, ratio, n_epoch,criterion, lr, device, num_model
                 opt.step()
 
             if 1:
-            # record loss and accuracy
+                # record loss and accuracy
                 train_loss += loss.detach().cpu().item() / len(train_loader)
-                print(f" epoch : {epoch+1}/{n_epoch}  train loss: {train_loss:.3f}")
+                print(
+                    f" epoch : {epoch+1}/{n_epoch}  train loss: {train_loss:.3f}")
 
         # save model
-        torch.save(model.state_dict(), f'./mlp_models/chebyshev_{chebyshev_i}.pt')
+        torch.save(model.state_dict(),
+                   f'./mlp_models/chebyshev_{chebyshev_i}.pt')
 
-import numpy as np
 
-def predict_alpha(model, plot_loader,  num_models,criterion=None, device=None, test=False):
-    models = get_models(pre_name=config["pre_name"], model_skeleton=model, num_models=num_models)
+def predict_alpha(model, plot_loader,  num_models, criterion=None, device=None, test=False):
+    models = get_models(
+        pre_name=config["pre_name"], model_skeleton=model, num_models=num_models)
     alphas = np.array([])
     for chebyshev_i in range(num_models):
         model_i = models[chebyshev_i]
@@ -99,7 +103,8 @@ def predict_alpha(model, plot_loader,  num_models,criterion=None, device=None, t
             for x_batch, y_batch, _ in tqdm(plot_loader, desc=f'testing', leave=False):
                 x_batch, y_batch = x_batch.to(device), y_batch.to(device)
                 y_pred = model_i(x_batch)           # scalar
-                n_alphas = np.row_stack((n_alphas, y_pred)) if n_alphas.size else y_pred
+                n_alphas = np.row_stack(
+                    (n_alphas, y_pred)) if n_alphas.size else y_pred
 
                 if criterion and test:
                     y_batch = torch.squeeze(y_batch)[chebyshev_i]
@@ -107,10 +112,13 @@ def predict_alpha(model, plot_loader,  num_models,criterion=None, device=None, t
                     test_loss += loss.detach().cpu().item() / len(plot_loader)
         if test:
             print(f"for {chebyshev_i}th order, test loss : {test_loss:.2f}")
-        alphas = np.column_stack((alphas, n_alphas)) if alphas.size else n_alphas
+        alphas = np.column_stack(
+            (alphas, n_alphas)) if alphas.size else n_alphas
         return alphas
 
+
 def get_models(pre_name, model_skeleton, num_models):
+    # this method is specific in each model
     models = np.array([])
     for chebyshev_i in range(num_models):
         model_name = f'./mlp_models/{pre_name}_{chebyshev_i}.pt'
@@ -118,8 +126,6 @@ def get_models(pre_name, model_skeleton, num_models):
         models = np.row_stack((models, model_i)) if models.size else model_i
     return models
 
-from encoder import plot_spectrum
-import json
 
 with open("config_L6.json") as f:
     config = json.load(f)
@@ -144,8 +150,10 @@ if __name__ == "__main__":
     input_d = L + 2
     transform = ToTensor()
     # transform = None
-    train_set = AndersonChebyshevDataset(csv_file=training_file, L=L, n=N, transform=transform)
-    test_set =  AndersonChebyshevDataset(csv_file =testing_file, L=L, n=N, transform=transform)
+    train_set = AndersonChebyshevDataset(
+        csv_file=training_file, L=L, n=N, transform=transform)
+    test_set = AndersonChebyshevDataset(
+        csv_file=testing_file, L=L, n=N, transform=transform)
 
     train_loader = DataLoader(train_set, shuffle=True, batch_size=128)
     train_loader = DataLoader(train_set, shuffle=False, batch_size=128)
@@ -157,7 +165,8 @@ if __name__ == "__main__":
     # every time we save model in train function, and load model in compose_chebyshev_alpha, 256 models
     # loss is too small
     if train_model:
-        train(train_loader, input_d=input_d, ratio=RATIO, n_epoch=N_EPOCHS, criterion=criterious, lr=LR, device=device, num_models=num_models)
+        train(train_loader, input_d=input_d, ratio=RATIO, n_epoch=N_EPOCHS,
+              criterion=criterious, lr=LR, device=device, num_models=num_models)
     # todo 当前函数没有数据集，还未测试，有没有bug
     # nn_alphas = predict_alpha(model_skeleton, plot_loader=plot_loader, criterion=criterious, device=device, num_models=num_models, test=False)
     # plot_spectrum(plot_loader=plot_loader, model=get_models, omegas=omegas, T_pred=T_pred, x_grid=x_grid)
