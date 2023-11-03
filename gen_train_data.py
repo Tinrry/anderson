@@ -257,11 +257,13 @@ class Chebyshev():
         return T_pred
     
 import os
+from utils import load_config
 
 if __name__ == "__main__":
     debug = True
+    config = load_config('config_L6.json')
     # PARAMETERS
-    L, SIZE = 6, 5000
+    L, SIZE = 6, config["SIZE"]
     N, X_MIN, X_MAX = 255, -25, 25
     training_size = int(SIZE * 0.8)       # training: testing = 8: 2
     training_file = f"L{L}N{N}_training_{training_size}.csv"
@@ -270,6 +272,8 @@ if __name__ == "__main__":
     if os.path.exists(training_file):
         pd_data = pd.read_csv(training_file)
         txt_data = loadtxt(training_file, delimiter=',')
+        print(pd_data.iloc[0,0], f"    {pd_data.iloc[0,0].dtype}")
+        print(txt_data[1, 0])
         # the fist line is pandas header
         assert txt_data[1].sum() - pd_data.iloc[0].sum() < 0.00001, 'pd read data error.'
     else:

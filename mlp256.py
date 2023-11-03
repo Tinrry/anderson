@@ -4,7 +4,7 @@ from tqdm import trange
 import torch
 import torch.nn as nn
 
-from encoder import ToTensor
+from utils import ToTensor
 from encoder import AndersonChebyshevDataset
 from torch.utils.data import DataLoader
 
@@ -56,12 +56,11 @@ class MyMLP(nn.Module):
 def train(train_loader, input_d, ratio, n_epoch,criterion, lr, device, num_models):
     for chebyshev_i in range(num_models):
         # init model
-        model = MyMLP(input_d, ratio=ratio)
+        model = MyMLP(input_d, ratio=ratio).to(device=device)
         # 第 i 个 model 预测 第i个chebyshev 的系数
         opt = torch.optim.Adam(model.parameters(), lr=lr)
-        model = model.to(device)
+        model.double()
 
-        train_acc = 0.0
         for epoch in trange(n_epoch, desc='Training'):
             train_loss = 0.0
             # TODO dataset load with header 可以分解。
@@ -77,7 +76,7 @@ def train(train_loader, input_d, ratio, n_epoch,criterion, lr, device, num_model
                 # update parameters
                 opt.step()
 
-            if (epoch+1) % 10 == 0:
+            if 1:
             # record loss and accuracy
                 train_loss += loss.detach().cpu().item() / len(train_loader)
                 print(f" epoch : {epoch+1}/{n_epoch}  train loss: {train_loss:.3f}")

@@ -12,6 +12,8 @@ from torchvision.transforms import ToTensor
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 
+from utils import AndersonChebyshevDataset
+
 
 def patchify(images, n_patch, device):
     n, c, h = images.shape
@@ -201,45 +203,8 @@ def predict_alpha(model, plot_loader, criterion=None, device=None, num_models=1,
     return alphas
 
 
-class ToTensor(object):
-    """Convert ndarrays in sample to Tensors."""
 
-    def __call__(self, sample):
-        anderson, chebyshev, Greens = sample
-
-        return (torch.from_numpy(anderson).float(),
-                torch.from_numpy(chebyshev).float(),
-                torch.from_numpy(Greens))
-
-
-class AndersonChebyshevDataset(Dataset):
-    # anderson and chevbyshev datasets
-
-    def __init__(self, csv_file, L=3, n=25, transform=None):
-        self.L = L
-        self.n = n
-        self.data = pd.read_csv(csv_file)
-        self.transform = transform
-
-    def __len__(self):
-        return len(self.data)
-
-    def __getitem__(self, idx):
-        if torch.is_tensor(idx):
-            idx = idx.tolist()
-
-        anderson = self.data.iloc[idx, :self.L+2]
-        chebyshev = self.data.iloc[idx, self.L+2: self.L + 2 + self.n + 1]
-        Greens = self.data.iloc[idx, self.L + 2 + self.n + 1: ]
-        anderson = np.array([anderson], dtype=float)
-        chebyshev = np.array([chebyshev], dtype=float)
-        Greens = np.array([Greens], dtype=float)
-        sample = (anderson, chebyshev, Greens)
-
-        if self.transform:
-            sample = self.transform(sample)
-
-        return sample
+from utils import ToTensor
 
 # 公共函数
 def plot_spectrum(plot_loader, model, omegas_csv, nrows, ncols, model_flag):
@@ -290,11 +255,7 @@ def plot_spectrum(plot_loader, model, omegas_csv, nrows, ncols, model_flag):
     plt.show()
 
 
-def load_config(config_name):
-    with open(config_name) as f:
-        config = load(f)
-    return config
-
+from utils import load_config
 
 np.random.seed(0)
 torch.manual_seed(0)
@@ -335,6 +296,7 @@ if __name__ == "__main__":
                   n_heads=config['n_heads'], 
                   hidden_d=config['hidden_d'], 
                   out_d=N+1).to(device)
+    model.double()
 
     criterious = nn.MSELoss()
     if train_model:
@@ -344,8 +306,8 @@ if __name__ == "__main__":
 
     # load model
     model.load_state_dict(torch.load(config["model_name"]))
-    validate(model, test_loader, criterion=criterious, device=device)
+    # validate(model, test_loader, criterion=criterious, device=device)
 
     # in default plot batch = nrows * nclos
     plot_loader = DataLoader(test_set, shuffle=False, batch_size=nrows * ncols)
-    plot_spectrum(test_loader, model=model, omegas_csv=config["omegas_csv"], nrows=nrows, ncols=ncols, model_flag = "transformer")
+    # plot_spectrum(test_loader, model=model, omegas_csv=config["omegas_csv"], nrows=nrows, ncols=ncols, model_flag = "transformer")
