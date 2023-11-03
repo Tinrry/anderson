@@ -48,6 +48,5 @@ class ToTensor(object):
         anderson = torch.DoubleTensor(torch.from_numpy(anderson_np))
         chebyshev = torch.DoubleTensor(torch.from_numpy(chebyshev_np))
         Greens = torch.DoubleTensor(torch.from_numpy(Greens_np))
-        print(f"{anderson[0,0]:.15f}", '    ', anderson.dtype)
 
         return (anderson, chebyshev, Greens)

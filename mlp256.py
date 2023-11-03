@@ -82,11 +82,14 @@ def train(train_loader, input_d, ratio, n_epoch, criterion, lr, device, num_mode
                 # record loss and accuracy
                 train_loss += loss.detach().cpu().item() / len(train_loader)
                 print(
-                    f" epoch : {epoch+1}/{n_epoch}  train loss: {train_loss:.3f}")
+                    f" epoch : {epoch+1}/{n_epoch}  train loss: {train_loss:.10f}")
 
         # save model
         torch.save(model.state_dict(),
                    f'./mlp_models/chebyshev_{chebyshev_i}.pt')
+
+        # test first model
+        break
 
 
 def predict_alpha(model, plot_loader,  num_models, criterion=None, device=None, test=False):
