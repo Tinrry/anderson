@@ -64,10 +64,12 @@ def train(train_loader, input_d, ratio, n_epoch,criterion, lr, device, num_model
         train_acc = 0.0
         for epoch in trange(n_epoch, desc='Training'):
             train_loss = 0.0
+            # TODO dataset load with header 可以分解。
             for x_batch, y_batch, _ in tqdm(train_loader, desc=f'epoch {epoch+1} in training', leave=False):
-                x_batch, y_batch = x_batch.to(device), y_batch.to(device)
+                x_batch = x_batch.to(device)
+                y_batch = y_batch.to(device)
                 y_pred = model(x_batch)
-                y_batch = torch.squeeze(y_batch)[chebyshev_i]
+                y_batch = torch.squeeze(y_batch)[:, chebyshev_i]
                 loss = criterion(y_pred, y_batch)
                 # backward
                 opt.zero_grad()
@@ -78,11 +80,10 @@ def train(train_loader, input_d, ratio, n_epoch,criterion, lr, device, num_model
             if (epoch+1) % 10 == 0:
             # record loss and accuracy
                 train_loss += loss.detach().cpu().item() / len(train_loader)
-                train_acc += (y_pred.max(1)[1] == y_batch).sum().item() / len(train_loader)
-                print(f" epoch : {epoch+1}/{n_epoch}  train loss: {train_loss:.3f} train accuracy: {train_acc * 100:.3f}%")
+                print(f" epoch : {epoch+1}/{n_epoch}  train loss: {train_loss:.3f}")
 
         # save model
-        torch.save(model.state_dict(), f'chebyshev_{chebyshev_i}.pt')
+        torch.save(model.state_dict(), f'./mlp_models/chebyshev_{chebyshev_i}.pt')
 
 import numpy as np
 
@@ -113,14 +114,16 @@ def predict_alpha(model, plot_loader,  num_models,criterion=None, device=None, t
 def get_models(pre_name, model_skeleton, num_models):
     models = np.array([])
     for chebyshev_i in range(num_models):
-        model_name = f'{pre_name}_{chebyshev_i}.pt'
+        model_name = f'./mlp_models/{pre_name}_{chebyshev_i}.pt'
         model_i = model_skeleton.load_state_dict(torch.load(model_name))
         models = np.row_stack((models, model_i)) if models.size else model_i
     return models
 
 from encoder import plot_spectrum
-from encoder import config
+import json
 
+with open("config_L6.json") as f:
+    config = json.load(f)
 
 if __name__ == "__main__":
     # hyper-parameters
@@ -128,15 +131,16 @@ if __name__ == "__main__":
     SIZE = config["SIZE"]
     RATIO = config["RATIO"]
     N_EPOCHS = config["N_EPOCHS"]
+    LR = config["LR"]
 
     pre_name = config["pre_name"]
     # num_models 是 N+1, (1, x, 2-x, 3-x, N-x)
     num_models = N + 1
-    train_model = False
+    train_model = True
 
     training_size = int(config["SIZE"] * 0.8)       # training: testing = 8: 2
-    training_file = f"L{L}N{N}_training{training_size}.csv"
-    testing_file = f"L{L}N{N}_training{SIZE - training_size}.csv"
+    training_file = f"L{L}N{N}_training_{training_size}.csv"
+    testing_file = f"L{L}N{N}_testing_{SIZE - training_size}.csv"
 
     input_d = L + 2
     transform = ToTensor()
@@ -145,6 +149,7 @@ if __name__ == "__main__":
     test_set =  AndersonChebyshevDataset(csv_file =testing_file, L=L, n=N, transform=transform)
 
     train_loader = DataLoader(train_set, shuffle=True, batch_size=128)
+    train_loader = DataLoader(train_set, shuffle=False, batch_size=128)
     plot_loader = DataLoader(test_set, shuffle=False, batch_size=128)
 
     device = torch.device('cuda' if torch.cuda.is_available() else "cpu")
@@ -155,5 +160,5 @@ if __name__ == "__main__":
     if train_model:
         train(train_loader, input_d=input_d, ratio=RATIO, n_epoch=N_EPOCHS, criterion=criterious, lr=LR, device=device, num_models=num_models)
     # todo 当前函数没有数据集，还未测试，有没有bug
-    nn_alphas = predict_alpha(model_skeleton, plot_loader=plot_loader, criterion=criterious, device=device, num_models=num_models, test=False)
-    plot_spectrum(plot_loader=plot_loader, model=get_models, omegas=omegas, T_pred=T_pred, x_grid=x_grid)
+    # nn_alphas = predict_alpha(model_skeleton, plot_loader=plot_loader, criterion=criterious, device=device, num_models=num_models, test=False)
+    # plot_spectrum(plot_loader=plot_loader, model=get_models, omegas=omegas, T_pred=T_pred, x_grid=x_grid)

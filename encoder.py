@@ -205,9 +205,11 @@ class ToTensor(object):
     """Convert ndarrays in sample to Tensors."""
 
     def __call__(self, sample):
-        anderson, chebyshev = sample
+        anderson, chebyshev, Greens = sample
 
-        return (torch.from_numpy(anderson).float(), torch.from_numpy(chebyshev).float())
+        return (torch.from_numpy(anderson).float(),
+                torch.from_numpy(chebyshev).float(),
+                torch.from_numpy(Greens))
 
 
 class AndersonChebyshevDataset(Dataset):
@@ -303,18 +305,23 @@ if __name__ == "__main__":
     config = load_config('config_L6.json')
     L, N = config["L"], config["N"]
     N_EPOCHS = config["N_EPOCHS"]
+    SIZE = config["SIZE"]
 
     # plot parameters
     nrows=8
     ncols=4
 
+    training_size = int(config["SIZE"] * 0.8)       # training: testing = 8: 2
+    training_file = f"L{L}N{N}_training_{training_size}.csv"
+    testing_file = f"L{L}N{N}_testing_{SIZE - training_size}.csv"
+
     input_d = L + 2
     transform = ToTensor()
     # transform = None
     train_set = AndersonChebyshevDataset(
-        csv_file=config["train_csv"], L=L, n=N, transform=transform)
+        csv_file=training_file, L=L, n=N, transform=transform)
     test_set = AndersonChebyshevDataset(
-        csv_file=config["test_csv"], L=L, n=N, transform=transform)
+        csv_file=testing_file, L=L, n=N, transform=transform)
 
     train_loader = DataLoader(train_set, shuffle=True,
                               batch_size=config["batch_size"])
