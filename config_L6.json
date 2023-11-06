@@ -2,7 +2,7 @@
     "_comment1": "anderson",
     "L": 6,
     "N": 255,
-    "N_EPOCHS": 50,
+    "N_EPOCHS": 2,
     "LR": 0.0005,
     "batch_size": 128,
     "omegas_csv": "L6N255_omegas_T_pred_x_grid.csv",

@@ -6,14 +6,14 @@ from tqdm import trange
 import torch
 import torch.nn as nn
 
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, random_split
 
 from utils import AndersonChebyshevDataset
 from utils import ToTensor
 
 
 class MyMLP(nn.Module):
-    def __init__(self, input_d, ratio=4) -> None:
+    def __init__(self, input_d, ratio=2) -> None:
         super(MyMLP, self).__init__()
         self.input_d = input_d
         self.ratio = ratio
@@ -89,6 +89,10 @@ def train(train_loader, input_d, ratio, n_epoch, criterion, lr, device, num_mode
                    f'./mlp_models/chebyshev_{chebyshev_i}.pt')
 
         # test first model
+        model_bk = MyMLP(input_d, ratio)
+        model_0 = get_model(pre_name=config["pre_name"], model_skeleton=model_bk, order=0)
+        model.to(device)
+        model_0 = model_0.to(device)
         break
 
 
@@ -98,7 +102,8 @@ def predict_alpha(model, plot_loader,  num_models, criterion=None, device=None, 
     alphas = np.array([])
     for chebyshev_i in range(num_models):
         model_i = models[chebyshev_i]
-        model_i = model_i.to(device)
+        model_i = get_model(pre_name=config["pre_name"], model_skeleton=model)
+        # model_i = model_i.to(device)
 
         n_alphas = np.array([])
         test_loss = 0.0
@@ -117,21 +122,37 @@ def predict_alpha(model, plot_loader,  num_models, criterion=None, device=None, 
             print(f"for {chebyshev_i}th order, test loss : {test_loss:.2f}")
         alphas = np.column_stack(
             (alphas, n_alphas)) if alphas.size else n_alphas
-        return alphas
+        
+        break
+    return alphas
 
+
+def get_model(pre_name, model_skeleton, order=0):
+    # this method is specific in each model
+    model_name = f'./mlp_models/{pre_name}_{order}.pt'
+    model_skeleton.load_state_dict(torch.load(model_name))
+    return model_skeleton
+
+import copy
 
 def get_models(pre_name, model_skeleton, num_models):
     # this method is specific in each model
     models = np.array([])
     for chebyshev_i in range(num_models):
+        model_i = copy.deepcopy(model_skeleton)
         model_name = f'./mlp_models/{pre_name}_{chebyshev_i}.pt'
-        model_i = model_skeleton.load_state_dict(torch.load(model_name))
-        models = np.row_stack((models, model_i)) if models.size else model_i
+        model_i.load_state_dict(torch.load(model_name))
+        models = np.row_stack((models, model_i)) if models.size else np.array([[model_i]])
+    
     return models
 
-
+torch.manual_seed(123)
+# everytime notice
 with open("config_L6.json") as f:
     config = json.load(f)
+train_model = True
+num_models = 1
+
 
 if __name__ == "__main__":
     # hyper-parameters
@@ -143,24 +164,24 @@ if __name__ == "__main__":
 
     pre_name = config["pre_name"]
     # num_models 是 N+1, (1, x, 2-x, 3-x, N-x)
-    num_models = N + 1
-    train_model = True
 
     training_size = int(config["SIZE"] * 0.8)       # training: testing = 8: 2
     training_file = f"L{L}N{N}_training_{training_size}.csv"
     testing_file = f"L{L}N{N}_testing_{SIZE - training_size}.csv"
+    val_size = 500              # we use 500 in validate , 500 in test
 
     input_d = L + 2
     transform = ToTensor()
     # transform = None
     train_set = AndersonChebyshevDataset(
         csv_file=training_file, L=L, n=N, transform=transform)
-    test_set = AndersonChebyshevDataset(
-        csv_file=testing_file, L=L, n=N, transform=transform)
+
+    dataset = AndersonChebyshevDataset(csv_file=testing_file, L=L, n=N, transform=transform)
+    test_size = len(dataset) - val_size
+    test_ds, val_ds = random_split(dataset, [val_size, test_size])
 
     train_loader = DataLoader(train_set, shuffle=True, batch_size=128)
-    train_loader = DataLoader(train_set, shuffle=False, batch_size=128)
-    plot_loader = DataLoader(test_set, shuffle=False, batch_size=128)
+    validate_loader = DataLoader(val_ds, shuffle=False, batch_size=128)
 
     device = torch.device('cuda' if torch.cuda.is_available() else "cpu")
     model_skeleton = MyMLP(input_d=input_d, ratio=RATIO)
@@ -170,6 +191,8 @@ if __name__ == "__main__":
     if train_model:
         train(train_loader, input_d=input_d, ratio=RATIO, n_epoch=N_EPOCHS,
               criterion=criterious, lr=LR, device=device, num_models=num_models)
-    # todo 当前函数没有数据集，还未测试，有没有bug
+    # # todo 当前函数没有数据集，还未测试，有没有bug
+    # model = MyMLP(input_d, RATIO).to(device)
+    # predict_alpha(model=model, plot_loader=validate_loader, num_models=1, device=device, test=True)
     # nn_alphas = predict_alpha(model_skeleton, plot_loader=plot_loader, criterion=criterious, device=device, num_models=num_models, test=False)
     # plot_spectrum(plot_loader=plot_loader, model=get_models, omegas=omegas, T_pred=T_pred, x_grid=x_grid)
