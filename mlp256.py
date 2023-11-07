@@ -65,7 +65,9 @@ def train(train_loader, input_d, ratio, n_epoch, criterion, lr, device, num_mode
 
         for epoch in trange(n_epoch, desc='Training'):
             train_loss = 0.0
-            # TODO dataset load with header 可以分解。
+            validate_loss = 0.0
+            total_sample = 0
+
             for x_batch, y_batch, _ in tqdm(train_loader, desc=f'epoch {epoch+1} in training', leave=False):
                 x_batch = x_batch.to(device)
                 y_batch = y_batch.to(device)
@@ -78,11 +80,27 @@ def train(train_loader, input_d, ratio, n_epoch, criterion, lr, device, num_mode
                 # update parameters
                 opt.step()
 
-            if 1:
-                # record loss and accuracy
-                train_loss += loss.detach().cpu().item() / len(train_loader)
-                print(
-                    f" epoch : {epoch+1}/{n_epoch}  train loss: {train_loss:.10f}")
+                if 1:
+                    # record loss and accuracy
+                    train_loss += loss.detach().cpu().item()
+                    total_sample += len(x_batch)
+            print(f" epoch : {epoch+1}/{n_epoch}  train loss: {train_loss / total_sample:.10f}, train sample: {total_sample}")
+            
+            # validate loop
+            validate_sample = 0
+            for x_v, y_v, _ in tqdm(validate_loader, desc=f'epoch {epoch+1} in validating', leave=False):
+                x_v = x_v.to(device)
+                y_v = y_v.to(device)
+                yv_pred = model(x_v)
+                y_v = torch.squeeze(y_v)[:, chebyshev_i]
+                loss_v = criterion(yv_pred, y_v)
+
+                # TODO plot
+                if 1: 
+                    validate_loss += loss_v.detach().cpu().item()
+                    validate_sample += len(x_v)
+
+            print(f" epoch : {epoch+1}/{n_epoch}  validate loss: {validate_loss / validate_sample:.10f}, validate sample : {validate_sample}")
 
         # save model
         torch.save(model.state_dict(),
@@ -99,23 +117,26 @@ def predict_alpha(model, plot_loader,  num_models, criterion=None, device=None, 
 
         n_alphas = np.array([])
         test_loss = 0.0
+        test_sample = 0
         with torch.no_grad():
             for x_batch, y_batch, _ in tqdm(plot_loader, desc=f'testing', leave=False):
                 x_batch, y_batch = x_batch.to(device), y_batch.to(device)
-                y_pred = model_i(x_batch)           # scalar
+                y_pred = model_i(x_batch)           # (batch_n, 1)
+                y_np = y_pred.cpu().numpy()
                 n_alphas = np.row_stack(
-                    (n_alphas, y_pred)) if n_alphas.size else y_pred
+                    (n_alphas, y_np)) if n_alphas.size else y_np
 
                 if criterion and test:
-                    y_batch = torch.squeeze(y_batch[chebyshev_i])
+                    y_batch = torch.squeeze(y_batch)[:, chebyshev_i]
                     loss = criterion(y_pred, y_batch)
-                    test_loss += loss.detach().cpu().item() / len(plot_loader)
+                    test_loss += loss.detach().cpu().item()
+                    test_sample += len(x_batch)
         if test:
-            print(f"for {chebyshev_i}th order, test loss : {test_loss:.10f}")
+            print(f"for {chebyshev_i}th order, test loss : {test_loss / test_sample:.10f}, test sample: {test_sample}")
         alphas = np.column_stack(
             (alphas, n_alphas)) if alphas.size else n_alphas
-
-        break
+    
+    assert alphas.shape == (test_sample, num_models), f'{alphas.shape} != ({len(plot_loader)}, {num_models})'
     return alphas
 
 
@@ -141,9 +162,9 @@ def get_models(pre_name, model_skeleton, num_models):
 
 torch.manual_seed(123)
 # everytime notice
-with open("config_L6.json") as f:
+with open("config_L6_1.json") as f:
     config = json.load(f)
-train_model = False
+train_model = True
 num_models = 1
 
 
@@ -154,6 +175,7 @@ if __name__ == "__main__":
     RATIO = config["RATIO"]
     N_EPOCHS = config["N_EPOCHS"]
     LR = config["LR"]
+    batch_size = config['batch_size']
 
     pre_name = config["pre_name"]
     # num_models 是 N+1, (1, x, 2-x, 3-x, N-x)
@@ -174,8 +196,8 @@ if __name__ == "__main__":
     test_size = len(dataset) - val_size
     test_ds, val_ds = random_split(dataset, [val_size, test_size])
 
-    train_loader = DataLoader(train_set, shuffle=True, batch_size=128)
-    validate_loader = DataLoader(val_ds, shuffle=False, batch_size=128)
+    train_loader = DataLoader(train_set, shuffle=True, batch_size=batch_size)
+    validate_loader = DataLoader(val_ds, shuffle=False, batch_size=batch_size)
 
     device = torch.device('cuda' if torch.cuda.is_available() else "cpu")
     model_skeleton = MyMLP(input_d=input_d, ratio=RATIO)
