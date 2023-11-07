@@ -148,6 +148,8 @@ def get_models(pre_name, model_skeleton, num_models):
     return models
 
 
+import os
+
 torch.manual_seed(123)
 # everytime notice
 with open("config_L6.json") as f:
@@ -168,8 +170,8 @@ if __name__ == "__main__":
     # num_models 是 N+1, (1, x, 2-x, 3-x, N-x)
 
     training_size = int(config["SIZE"] * 0.8)       # training: testing = 8: 2
-    training_file = f"L{L}N{N}_training_{training_size}.csv"
-    testing_file = f"L{L}N{N}_testing_{SIZE - training_size}.csv"
+    training_file = os.path.join('datasets', f"L{L}N{N}_training_{training_size}.csv")
+    testing_file = os.path.join('datasets', f"L{L}N{N}_testing_{SIZE - training_size}.csv")
     val_size = 500              # we use 500 in validate , 500 in test
 
     input_d = L + 2

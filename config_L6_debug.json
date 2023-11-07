@@ -1,0 +1,23 @@
+{
+    "_comment1": "anderson",
+    "L": 6,
+    "N": 255,
+    "N_EPOCHS": 2,
+    "LR": 0.0005,
+    "batch_size": 128,
+    "omegas_csv": "L6N255_omegas_T_pred_x_grid.csv",
+
+    "_comment2": "specific for transformer model",
+    "blocks": 2,
+    "n_heads": 2,
+    "hidden_d": 8,
+    "model_name": "encoderL6.pt",
+
+    "_comment3": "specific for mlp256 model",
+    "pre_name": "chebyshev",
+    "RATIO": 2,
+
+    "_comment4": "specific for generate dataset",
+    "SIZE": 5000
+
+}

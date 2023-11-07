@@ -273,8 +273,8 @@ if __name__ == "__main__":
     ncols=4
 
     training_size = int(config["SIZE"] * 0.8)       # training: testing = 8: 2
-    training_file = f"L{L}N{N}_training_{training_size}.csv"
-    testing_file = f"L{L}N{N}_testing_{SIZE - training_size}.csv"
+    training_file = os.path.join('datasets', f"L{L}N{N}_training_{training_size}.csv")
+    testing_file = os.path.join('datasets', f"L{L}N{N}_testing_{SIZE - training_size}.csv")
 
     input_d = L + 2
     transform = ToTensor()
