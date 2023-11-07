@@ -1,12 +1,11 @@
+import os
 import copy
 import json
 import numpy as np
-from tqdm import tqdm
-from tqdm import trange
+from tqdm import tqdm, trange
 
 import torch
 import torch.nn as nn
-
 from torch.utils.data import DataLoader, random_split
 
 from utils import AndersonChebyshevDataset
@@ -89,14 +88,6 @@ def train(train_loader, input_d, ratio, n_epoch, criterion, lr, device, num_mode
         torch.save(model.state_dict(),
                    f'./mlp_models/chebyshev_{chebyshev_i}.pt')
 
-        # test first model
-        model_bk = MyMLP(input_d, ratio)
-        model_0 = get_model(
-            pre_name=config["pre_name"], model_skeleton=model_bk, order=0)
-        model.to(device)
-        model_0 = model_0.to(device)
-        break
-
 
 def predict_alpha(model, plot_loader,  num_models, criterion=None, device=None, test=False):
     alphas = np.array([])
@@ -147,8 +138,6 @@ def get_models(pre_name, model_skeleton, num_models):
 
     return models
 
-
-import os
 
 torch.manual_seed(123)
 # everytime notice
