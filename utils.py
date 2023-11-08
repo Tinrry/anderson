@@ -1,7 +1,10 @@
 from json import load
-import torch
 import numpy as np
 import pandas as pd
+import h5py
+import matplotlib.pyplot as plt
+
+import torch
 from torch.utils.data import Dataset
 
 
@@ -50,3 +53,39 @@ class ToTensor(object):
         Greens = torch.DoubleTensor(torch.from_numpy(Greens_np))
 
         return (anderson, chebyshev, Greens)
+
+
+
+# 公共函数
+def plot_spectrum(spectrum_filename, nn_alpha, nrows=8, ncols=4):
+    # plot Greens
+    # plot chebyshev, TF, by alphas--labels
+    # plot chebyshev, TF, by alphas--nn-predict
+    hf = h5py.File(spectrum_filename, 'r')
+    # meta_len = config["N"] + 1
+    omegas = hf['omegas'][:]
+    T_pred = hf['T_pred'][:]
+    x_grid = hf['x_grid'][:]
+    Tfs = hf['Tfs'][:]
+    Greens = hf['Greens'][:]
+
+    nn_alpha = np.array([])
+
+    # compute spectrum by alpha
+    nn_Tfs = np.array([])
+    for idx in range(len(Tfs)):
+        nn_a = nn_alpha[idx]
+        # compute chebyshev function
+        nn_Tf = T_pred @ nn_a
+        nn_Tfs = np.row_stack((nn_Tfs, nn_Tf)) if nn_Tfs.size else nn_Tf
+        if len(nn_Tfs.shape) == 1:
+            nn_Tfs = np.expand_dims(nn_Tfs, axis=0)
+
+    fig, axs = plt.subplot(nrows, ncols, sharex=True, sharey=True)
+    for i in range(nrows):
+        for j in range(ncols):
+            axs[i, j].plot(omegas, Greens[i * ncols + j], color='r')
+            axs[i, j].plot(x_grid, Tfs[i * ncols + j], color='g')
+            axs[i, j].plot(x_grid, nn_Tfs[i * ncols + j], color='b')
+    fig.suptitle('Greens, cheby_Tfs, nn_Tfs, spectrum plot')
+    plt.show()

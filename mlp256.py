@@ -55,7 +55,7 @@ class MyMLP(nn.Module):
         return x_1
 
 
-def train(train_loader, input_d, ratio, n_epoch, criterion, lr, device, num_models):
+def train(train_loader, validate_loader, input_d, ratio, n_epoch, criterion, lr, device, num_models):
     for chebyshev_i in range(num_models):
         # init model
         model = MyMLP(input_d, ratio=ratio).to(device=device)
@@ -106,8 +106,11 @@ def train(train_loader, input_d, ratio, n_epoch, criterion, lr, device, num_mode
         torch.save(model.state_dict(),
                    f'./mlp_models/chebyshev_{chebyshev_i}.pt')
 
+import pandas as pd
+def predict_alpha(model, plot_loader,  num_models, device=None):
+    paras = pd.read_csv(filepath_or_buffer=paras_filename, delimiter=',', header=None, index_col=0).values
+    print(f'{paras[0, :]}')
 
-def predict_alpha(model, plot_loader,  num_models, criterion=None, device=None, test=False):
     alphas = np.array([])
     for chebyshev_i in range(num_models):
         model_i = get_model(
@@ -116,28 +119,41 @@ def predict_alpha(model, plot_loader,  num_models, criterion=None, device=None, 
         model_i.double()
 
         n_alphas = np.array([])
+        test_sample = 0
+        with torch.no_grad():
+            for para  in tqdm(paras, desc=f'testing', leave=False):
+                para = para.to(device)
+                # TODO  we should modify paras as dataloader to user predict data.
+                y_pred = model_i(para)           # (batch_n, 1)
+                y_np = y_pred.cpu().numpy()
+                n_alphas = np.row_stack(
+                    (n_alphas, y_np)) if n_alphas.size else y_np
+
+        alphas = np.column_stack(
+            (alphas, n_alphas)) if alphas.size else n_alphas
+    
+    assert alphas.shape == (test_sample, num_models), f'{alphas.shape} != ({len(paras)}, {num_models})'
+    return alphas
+
+
+def test(model, plot_loader,  num_models, criterion=None, device=None):
+    for chebyshev_i in range(num_models):
+        model_i = get_model(
+            pre_name=config["pre_name"], model_skeleton=model, order=chebyshev_i)
+        model_i = model_i.to(device)
+        model_i.double()
+
         test_loss = 0.0
         test_sample = 0
         with torch.no_grad():
             for x_batch, y_batch, _ in tqdm(plot_loader, desc=f'testing', leave=False):
                 x_batch, y_batch = x_batch.to(device), y_batch.to(device)
                 y_pred = model_i(x_batch)           # (batch_n, 1)
-                y_np = y_pred.cpu().numpy()
-                n_alphas = np.row_stack(
-                    (n_alphas, y_np)) if n_alphas.size else y_np
-
-                if criterion and test:
-                    y_batch = torch.squeeze(y_batch)[:, chebyshev_i]
-                    loss = criterion(y_pred, y_batch)
-                    test_loss += loss.detach().cpu().item()
-                    test_sample += len(x_batch)
-        if test:
+                y_batch = torch.squeeze(y_batch)[:, chebyshev_i]
+                loss = criterion(y_pred, y_batch)
+                test_loss += loss.detach().cpu().item()
+                test_sample += len(x_batch)
             print(f"for {chebyshev_i}th order, test loss : {test_loss / test_sample:.10f}, test sample: {test_sample}")
-        alphas = np.column_stack(
-            (alphas, n_alphas)) if alphas.size else n_alphas
-    
-    assert alphas.shape == (test_sample, num_models), f'{alphas.shape} != ({len(plot_loader)}, {num_models})'
-    return alphas
 
 
 def get_model(pre_name, model_skeleton, order=0):
@@ -161,15 +177,14 @@ def get_models(pre_name, model_skeleton, num_models):
 
 
 torch.manual_seed(123)
-# everytime notice
-with open("config_L6_1.json") as f:
-    config = json.load(f)
-train_model = True
-num_models = 1
+train_model = False
+
+from utils import plot_spectrum, load_config
 
 
 if __name__ == "__main__":
     # hyper-parameters
+    config = load_config('config_L6_1.json')
     L, N = config["L"], config["N"]
     SIZE = config["SIZE"]
     RATIO = config["RATIO"]
@@ -179,6 +194,7 @@ if __name__ == "__main__":
 
     pre_name = config["pre_name"]
     # num_models 是 N+1, (1, x, 2-x, 3-x, N-x)
+    num_models = N+1
 
     training_size = int(config["SIZE"] * 0.8)       # training: testing = 8: 2
     training_file = os.path.join('datasets', f"L{L}N{N}_training_{training_size}.csv")
@@ -197,27 +213,27 @@ if __name__ == "__main__":
     test_ds, val_ds = random_split(dataset, [val_size, test_size])
 
     train_loader = DataLoader(train_set, shuffle=True, batch_size=batch_size)
+    test_loader = DataLoader(test_ds, shuffle=False, batch_size=1)
     validate_loader = DataLoader(val_ds, shuffle=False, batch_size=batch_size)
 
     device = torch.device('cuda' if torch.cuda.is_available() else "cpu")
-    model_skeleton = MyMLP(input_d=input_d, ratio=RATIO)
     criterious = nn.MSELoss()
     # every time we save model in train function, and load model in compose_chebyshev_alpha, 256 models
     # loss is too small
     if train_model:
         train(train_loader, 
+              validate_loader,
               input_d=input_d, 
               ratio=RATIO, 
               n_epoch=N_EPOCHS,
               criterion=criterious, 
-              lr=LR, device=device, 
+              lr=LR,
+              device=device, 
               num_models=num_models)
-    # todo 当前函数没有数据集，还未测试，有没有bug
     model = MyMLP(input_d, RATIO)
-    _ = predict_alpha(model=model, 
-                      plot_loader=validate_loader,
-                      num_models=num_models,
-                      device=device, 
-                      criterion=criterious, 
-                      test=True)
-    # plot_spectrum(plot_loader=plot_loader, model=get_models, omegas=omegas, T_pred=T_pred, x_grid=x_grid)
+    test(model, test_loader, num_models, criterion=criterious, device=device)
+    # plot anderson parameters save in paras.csv
+    paras = config['paras']
+    spectrum_f = config['spectrum_paras']
+    alphas = predict_alpha(model, paras_filename=paras, num_models=256, device=device)
+    plot_spectrum(spectrum_filename=spectrum_f, nn_alpha=alphas)

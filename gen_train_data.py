@@ -222,7 +222,7 @@ class Anderson():
 
 
 class Chebyshev():
-    def __init__(self, n=250, x_min=-25, x_max=25):
+    def __init__(self, n=250, x_min=-25, x_max=25, size=1000):
         """ chebyshev parameters
         n : order (degree, highest power) of the approximating polynomial
         m : number of Chebyshev nodes (having m > n doesn't matter for the approximation it seems)
@@ -231,9 +231,10 @@ class Chebyshev():
         self.m = n+1
         self.x_min = x_min
         self.x_max = x_max
+        self.size = size
 
-    def x_grid(self, size=1000):
-        x_grid = np.linspace(self.x_min, self.x_max, size)
+    def x_grid(self):
+        x_grid = np.linspace(self.x_min, self.x_max, self.size)
         return x_grid
     
     @property
@@ -249,8 +250,8 @@ class Chebyshev():
 
     def T_pred(self, z_grid):
         # Use coefficients to compute an approximation of $f(x)$ over the grid of $x$:
-        T_pred = np.zeros((len(x_grid), self.n + 1))
-        T_pred[:, 0] = np.ones((len(x_grid), 1)).T
+        T_pred = np.zeros((self.size, self.n + 1))
+        T_pred[:, 0] = np.ones((self.size, 1)).T
         T_pred[:, 1] = z_grid.T
         for i in range(1, self.n):
             T_pred[:, i + 1] = 2 * z_grid * T_pred[:, i] - T_pred[:, i - 1]
@@ -261,7 +262,7 @@ from utils import load_config
 
 if __name__ == "__main__":
     debug = True
-    config = load_config('config_L6.json')
+    config = load_config('config_L6_1.json')
     # PARAMETERS
     L, SIZE = 6, config["SIZE"]
     N, X_MIN, X_MAX = 255, -25, 25
@@ -271,11 +272,7 @@ if __name__ == "__main__":
 
     if os.path.exists(training_file):
         pd_data = pd.read_csv(training_file)
-        txt_data = loadtxt(training_file, delimiter=',')
         print(pd_data.iloc[0,0], f"    {pd_data.iloc[0,0].dtype}")
-        print(txt_data[1, 0])
-        # the fist line is pandas header
-        assert txt_data[1].sum() - pd_data.iloc[0].sum() < 0.00001, 'pd read data error.'
     else:
         # generate anderson model parameters
         model = Anderson(l=L, size=SIZE)     # band=3 , parameters_size = 3*2*2+2=14
@@ -283,8 +280,8 @@ if __name__ == "__main__":
         if len(parameters.shape) == 1:
             parameters = np.expand_dims(parameters, axis=0)
 
-        # calculate the Chebyshev coefficients
-        chebyshev = Chebyshev(n=N, x_min= X_MIN, x_max= X_MAX)
+        # calculate the Chebyshev coefficients,size表示x画点的密度，谱函数描点个数
+        chebyshev = Chebyshev(n=N, x_min= X_MIN, x_max= X_MAX, size=1000)
 
         # compute setup
         x_k = scale_up(chebyshev.r_k, X_MIN, X_MAX)
@@ -314,6 +311,8 @@ if __name__ == "__main__":
             # 计算Tf
             Tf = T_pred @ alpha
             Tfs = np.row_stack((Tfs, Tf.T)) if Tfs.size else Tf
+            if len(Tfs.shape) == 1:
+                Tfs = np.expand_dims(Tfs, axis=0)
 
         # 制作数据集
         dataset = np.concatenate((parameters, alphas, Greens), axis=1)

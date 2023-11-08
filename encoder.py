@@ -1,18 +1,14 @@
-from json import load
-from torch.utils.data import Dataset
-import pandas as pd
+import os
 import numpy as np
 from tqdm import tqdm, trange
 
 import torch
 import torch.nn as nn
-# from torch.nn import Module, ModuleList
-from torchvision.datasets import CIFAR10
 from torchvision.transforms import ToTensor
 from torch.utils.data import DataLoader
-import matplotlib.pyplot as plt
 
 from utils import AndersonChebyshevDataset
+from utils import load_config, ToTensor
 
 
 def patchify(images, n_patch, device):
@@ -204,58 +200,6 @@ def predict_alpha(model, plot_loader, criterion=None, device=None, num_models=1,
 
 
 
-from utils import ToTensor
-
-# 公共函数
-def plot_spectrum(plot_loader, model, omegas_csv, nrows, ncols, model_flag):
-    # TODO todo save hypers to csv
-    # plot Greens
-    # plot chebyshev, TF, by alphas--labels
-    # plot chebyshev, TF, by alphas--nn-predict
-    hypers = pd.read_csv(filepath_or_buffer=omegas_csv)
-    meta_len = config["N"] + 1
-    omegas = hypers.iloc[0, : meta_len]
-    T_pred = hypers.iloc[0, meta_len: meta_len * 2]
-    x_grid = hypers.iloc[0, meta_len * 2:]
-
-    _, labels_alpha, Greens = plot_loader
-    nn_alpha = np.array([])
-    if model_flag == "transformer":
-        from encoder import predict_alpha
-        nn_alpha = predict_alpha(model, plot_loader=plot_loader)
-    else:
-        from mlp256 import predict_alpha
-        nn_alpha = predict_alpha(model=model, plot_loader=plot_loader, num_models=config["N"] + 1)
-
-    # for anderson_batch, chebyshev_batch, Greens_batch in tqdm(plot_loader, desc=f"plot spectrum {nrows*ncols}", leave=False):
-    #     labels_alpha = chebyshev_batch
-
-    # compute spectrum by alpha
-    label_Tfs = np.array([])
-    nn_Tfs = np.array([])
-    for idx in range(nrows * ncols):
-        label_a = labels_alpha[idx]
-        nn_a = nn_alpha[idx]
-
-        # compute chebyshev function
-        label_Tf = T_pred @ label_a
-        nn_Tf = T_pred @ nn_a
-        label_Tfs = np.row_stack((label_Tfs, label_Tf)
-                                ) if label_Tfs.size else label_Tf
-        nn_Tfs = np.row_stack((nn_Tfs, nn_Tf)) if nn_Tfs.size else nn_Tf
-
-    idx = 0
-    fig, axs = plt.subplot(nrows, ncols)
-    for i in range(nrows):
-        for j in range(ncols):
-            axs[i, j].plot(omegas, Greens[idx])
-            axs[i, j].plot(x_grid, label_Tfs[idx])
-            axs[i, j].plot(x_grid, nn_Tfs[idx])
-    fig.suptitle('Greens, label_Tfs, nn_Tfs, spectrum plot')
-    plt.show()
-
-
-from utils import load_config
 
 np.random.seed(0)
 torch.manual_seed(0)
@@ -269,8 +213,8 @@ if __name__ == "__main__":
     SIZE = config["SIZE"]
 
     # plot parameters
-    nrows=8
-    ncols=4
+    nrows=config['nrows']
+    ncols=4['ncols']
 
     training_size = int(config["SIZE"] * 0.8)       # training: testing = 8: 2
     training_file = os.path.join('datasets', f"L{L}N{N}_training_{training_size}.csv")
@@ -310,4 +254,9 @@ if __name__ == "__main__":
 
     # in default plot batch = nrows * nclos
     plot_loader = DataLoader(test_set, shuffle=False, batch_size=nrows * ncols)
-    # plot_spectrum(test_loader, model=model, omegas_csv=config["omegas_csv"], nrows=nrows, ncols=ncols, model_flag = "transformer")
+    plot_spectrum(plot_loader, 
+                  model=model, 
+                  omegas_csv=config["spectrum_paras"], 
+                  nrows=nrows, 
+                  ncols=ncols, 
+                  model_flag = "transformer")
