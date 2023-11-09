@@ -106,12 +106,31 @@ def train(train_loader, validate_loader, input_d, ratio, n_epoch, criterion, lr,
         torch.save(model.state_dict(),
                    f'./mlp_models/chebyshev_{chebyshev_i}.pt')
 
-import pandas as pd
-def predict_alpha(model, plot_loader,  num_models, device=None):
-    paras = pd.read_csv(filepath_or_buffer=paras_filename, delimiter=',', header=None, index_col=0).values
-    print(f'{paras[0, :]}')
+import h5py
 
+def get_alpha(model, plot_loader,  num_models, device=None, spectrum_filename=None):
     alphas = np.array([])
+    if spectrum_filename:
+        hf = h5py.File(spectrum_filename, 'a')
+        if 'mlp_alphas' not in hf.keys():
+            alphas = _predict_alpha(model, plot_loader, num_models, device)
+            hf.create_dataset(name='mlp_alphas', data=alphas, dtype='float64')
+        hf.close()
+
+        # read data
+        hf = h5py.File(spectrum_filename, 'r')
+        alphas = hf['mlp_alphas'][:]
+        hf.close()
+    else:
+        alphas = _predict_alpha(model, plot_loader, num_models, device)
+
+    return alphas
+
+
+def _predict_alpha(model, plot_loader,  num_models, device=None):
+    alphas = np.array([])
+
+    # compute mlp alphas
     for chebyshev_i in range(num_models):
         model_i = get_model(
             pre_name=config["pre_name"], model_skeleton=model, order=chebyshev_i)
@@ -121,7 +140,7 @@ def predict_alpha(model, plot_loader,  num_models, device=None):
         n_alphas = np.array([])
         test_sample = 0
         with torch.no_grad():
-            for para  in tqdm(paras, desc=f'testing', leave=False):
+            for para  in tqdm(plot_loader, desc=f'predict paras nn alphas', leave=False):
                 para = para.to(device)
                 # TODO  we should modify paras as dataloader to user predict data.
                 y_pred = model_i(para)           # (batch_n, 1)
@@ -131,8 +150,7 @@ def predict_alpha(model, plot_loader,  num_models, device=None):
 
         alphas = np.column_stack(
             (alphas, n_alphas)) if alphas.size else n_alphas
-    
-    assert alphas.shape == (test_sample, num_models), f'{alphas.shape} != ({len(paras)}, {num_models})'
+
     return alphas
 
 
@@ -149,7 +167,7 @@ def test(model, plot_loader,  num_models, criterion=None, device=None):
             for x_batch, y_batch, _ in tqdm(plot_loader, desc=f'testing', leave=False):
                 x_batch, y_batch = x_batch.to(device), y_batch.to(device)
                 y_pred = model_i(x_batch)           # (batch_n, 1)
-                y_batch = torch.squeeze(y_batch)[:, chebyshev_i]
+                y_batch = torch.squeeze(y_batch, dim=1)[:, chebyshev_i]
                 loss = criterion(y_pred, y_batch)
                 test_loss += loss.detach().cpu().item()
                 test_sample += len(x_batch)
@@ -180,6 +198,7 @@ torch.manual_seed(123)
 train_model = False
 
 from utils import plot_spectrum, load_config
+from utils import AndersonParas
 
 
 if __name__ == "__main__":
@@ -213,7 +232,7 @@ if __name__ == "__main__":
     test_ds, val_ds = random_split(dataset, [val_size, test_size])
 
     train_loader = DataLoader(train_set, shuffle=True, batch_size=batch_size)
-    test_loader = DataLoader(test_ds, shuffle=False, batch_size=1)
+    test_loader = DataLoader(test_ds, shuffle=False, batch_size=batch_size*2)
     validate_loader = DataLoader(val_ds, shuffle=False, batch_size=batch_size)
 
     device = torch.device('cuda' if torch.cuda.is_available() else "cpu")
@@ -231,9 +250,11 @@ if __name__ == "__main__":
               device=device, 
               num_models=num_models)
     model = MyMLP(input_d, RATIO)
-    test(model, test_loader, num_models, criterion=criterious, device=device)
+    # test(model, test_loader, num_models, criterion=criterious, device=device)
     # plot anderson parameters save in paras.csv
     paras = config['paras']
+    plot_set = AndersonParas(csv_file=paras, L=L)
+    plot_loader = DataLoader(plot_set, shuffle=False, batch_size=32)        # just one batch
     spectrum_f = config['spectrum_paras']
-    alphas = predict_alpha(model, paras_filename=paras, num_models=256, device=device)
+    alphas = get_alpha(model, plot_loader=plot_loader, num_models=256, device=device,spectrum_filename=spectrum_f)
     plot_spectrum(spectrum_filename=spectrum_f, nn_alpha=alphas)

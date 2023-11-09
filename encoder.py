@@ -214,7 +214,7 @@ if __name__ == "__main__":
 
     # plot parameters
     nrows=config['nrows']
-    ncols=4['ncols']
+    ncols=config['ncols']
 
     training_size = int(config["SIZE"] * 0.8)       # training: testing = 8: 2
     training_file = os.path.join('datasets', f"L{L}N{N}_training_{training_size}.csv")

@@ -23,7 +23,7 @@
 
     "_comment5": "plot paras.csv",
     "paras": "./datasets/paras.csv",
-    "spectrum_paras": "L6N255_spectrum.h5",
+    "spectrum_paras": "L6N255_spectrum_32.h5",
     "nrows": "8",
     "ncols": "4"
 }

@@ -17,6 +17,7 @@ class AndersonChebyshevDataset(Dataset):
     # anderson and chevbyshev datasets
 
     def __init__(self, csv_file, L=6, n=255, transform=None):
+        super(AndersonChebyshevDataset, self).__init__()
         self.L = L
         self.n = n
         self.data = pd.read_csv(csv_file)
@@ -25,13 +26,13 @@ class AndersonChebyshevDataset(Dataset):
     def __len__(self):
         return len(self.data)
 
-    def __getitem__(self, idx):
-        if torch.is_tensor(idx):
-            idx = idx.tolist()
+    def __getitem__(self, index):
+        if torch.is_tensor(index):
+            index = index.tolist()
 
-        anderson = self.data.iloc[idx, :self.L+2]
-        chebyshev = self.data.iloc[idx, self.L+2: self.L + 2 + self.n + 1]
-        Greens = self.data.iloc[idx, self.L + 2 + self.n + 1: ]
+        anderson = self.data.iloc[index, :self.L+2]
+        chebyshev = self.data.iloc[index, self.L+2: self.L + 2 + self.n + 1]
+        Greens = self.data.iloc[index, self.L + 2 + self.n + 1: ]
         anderson = np.array([anderson])
         chebyshev = np.array([chebyshev])
         Greens = np.array([Greens])
@@ -40,6 +41,25 @@ class AndersonChebyshevDataset(Dataset):
         if self.transform:
             sample = self.transform(sample)
 
+        return sample
+
+class AndersonParas(Dataset):
+    def __init__(self, csv_file, L=6):
+        super(AndersonParas, self).__init__()
+        self.data = pd.read_csv(csv_file, delimiter=',', index_col=0, header=None)
+        self.L = L
+    
+    def __len__(self):
+        return len(self.data)
+    
+    def __getitem__(self, index):
+        if torch.is_tensor(index):
+            index = index.tolist()
+        
+        paras = self.data.iloc[index, :]
+        paras = torch.DoubleTensor(torch.from_numpy(np.array([paras])))
+        sample = (paras)
+        
         return sample
 
 
@@ -69,8 +89,6 @@ def plot_spectrum(spectrum_filename, nn_alpha, nrows=8, ncols=4):
     Tfs = hf['Tfs'][:]
     Greens = hf['Greens'][:]
 
-    nn_alpha = np.array([])
-
     # compute spectrum by alpha
     nn_Tfs = np.array([])
     for idx in range(len(Tfs)):
@@ -81,7 +99,9 @@ def plot_spectrum(spectrum_filename, nn_alpha, nrows=8, ncols=4):
         if len(nn_Tfs.shape) == 1:
             nn_Tfs = np.expand_dims(nn_Tfs, axis=0)
 
-    fig, axs = plt.subplot(nrows, ncols, sharex=True, sharey=True)
+    fig, axs = plt.subplots(ncols=ncols, nrows=nrows, sharex=True, sharey=True)
+    omegas = np.squeeze(omegas, axis=0)
+    x_grid = np.squeeze(x_grid, axis=0)
     for i in range(nrows):
         for j in range(ncols):
             axs[i, j].plot(omegas, Greens[i * ncols + j], color='r')
