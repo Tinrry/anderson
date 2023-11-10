@@ -265,77 +265,54 @@ if __name__ == "__main__":
     # PARAMETERS
     L, SIZE = 6, 2000
     N, X_MIN, X_MAX = 255, -25, 25
-    training_size = int(SIZE * 0.8)       # training: testing = 8: 2
-    training_file = f"L{L}N{N}_training_{training_size}.csv"
-    testing_file = f"L{L}N{N}_testing_{SIZE - training_size}.csv"
+    filename = 'L6N255.h5'
 
-    if os.path.exists(training_file):
-        pd_data = pd.read_csv(training_file)
-        print(pd_data.iloc[0,0], f"    {pd_data.iloc[0,0].dtype}")
-    else:
-        # generate anderson model parameters
-        model = Anderson(l=L, size=SIZE)     # band=3 , parameters_size = 3*2*2+2=14
-        parameters = np.vstack((model.get_u, model.get_ef, model.get_ei, model.get_ti)).T     # shape(N, L+2)
-        if len(parameters.shape) == 1:
-            parameters = np.expand_dims(parameters, axis=0)
+    # generate anderson model parameters
+    model = Anderson(l=L, size=SIZE)     # band=3 , parameters_size = 3*2*2+2=14
+    parameters = np.vstack((model.get_u, model.get_ef, model.get_ei, model.get_ti)).T     # shape(N, L+2)
+    if len(parameters.shape) == 1:
+        parameters = np.expand_dims(parameters, axis=0)
 
-        # calculate the Chebyshev coefficients,size表示x画点的密度，谱函数描点个数
-        chebyshev = Chebyshev(n=N, x_min= X_MIN, x_max= X_MAX, size=1000)
+    # calculate the Chebyshev coefficients,size表示x画点的密度，谱函数描点个数
+    chebyshev = Chebyshev(n=N, x_min= X_MIN, x_max= X_MAX, size=1000)
 
-        # compute setup
-        x_k = scale_up(chebyshev.r_k, X_MIN, X_MAX)
-        omegas = x_k.copy()
-        x_grid = chebyshev.x_grid()
-        z_grid = scale_down(x_grid, X_MIN, X_MAX)
-        T_pred = chebyshev.T_pred(z_grid)
+    # compute setup
+    x_k = scale_up(chebyshev.r_k, X_MIN, X_MAX)
+    omegas = x_k.copy()
+    x_grid = chebyshev.x_grid()
+    z_grid = scale_down(x_grid, X_MIN, X_MAX)
+    T_pred = chebyshev.T_pred(z_grid)
 
-        Greens = np.array([])
-        alphas = np.array([])
-        Tfs = np.array([])
-        for paras in tqdm(parameters, desc=f"generate data", leave=False):
-            Green = model.spectral_function_fermion(omegas, paras, eta=0.55)
-            Greens = np.row_stack((Greens, Green.T)) if Greens.size else Green
-            if len(Greens.shape) == 1:
-                Greens = np.expand_dims(Greens, axis=0)
+    Greens = np.array([])
+    alphas = np.array([])
+    Tfs = np.array([])
+    for paras in tqdm(parameters, desc=f"generate data", leave=False):
+        Green = model.spectral_function_fermion(omegas, paras, eta=0.55)
+        Greens = np.row_stack((Greens, Green.T)) if Greens.size else Green
+        if len(Greens.shape) == 1:
+            Greens = np.expand_dims(Greens, axis=0)
 
-            # chebyshev & anderson translate
-            # 拟合alpha
-            y_k = Green
-            T = chebyshev.T(chebyshev.r_k)
-            alpha = np.linalg.inv(T.T @ T) @ T.T @ y_k
-            alphas = np.row_stack((alphas, alpha.T)) if alphas.size else alpha
-            if len(alphas.shape) == 1:
-                alphas = np.expand_dims(alphas, axis=0)
+        # chebyshev & anderson translate
+        # 拟合alpha
+        y_k = Green
+        T = chebyshev.T(chebyshev.r_k)
+        alpha = np.linalg.inv(T.T @ T) @ T.T @ y_k
+        alphas = np.row_stack((alphas, alpha.T)) if alphas.size else alpha
+        if len(alphas.shape) == 1:
+            alphas = np.expand_dims(alphas, axis=0)
 
-            # 计算Tf
-            Tf = T_pred @ alpha
-            Tfs = np.row_stack((Tfs, Tf.T)) if Tfs.size else Tf
-            if len(Tfs.shape) == 1:
-                Tfs = np.expand_dims(Tfs, axis=0)
+        # 计算Tf
+        Tf = T_pred @ alpha
+        Tfs = np.row_stack((Tfs, Tf.T)) if Tfs.size else Tf
+        if len(Tfs.shape) == 1:
+            Tfs = np.expand_dims(Tfs, axis=0)
 
-        # 制作数据集
-        dataset = np.concatenate((parameters, alphas, Greens), axis=1)
-        # use pandas
-        df = pd.DataFrame(dataset)
-        df.iloc[ :training_size].to_csv(training_file, index=False)
-        df.iloc[training_size: ].to_csv(testing_file, index=False)
+    # 制作数据集
+    dataset = np.concatenate((parameters, alphas, Greens), axis=1)
+    # use pandas
+    df = pd.DataFrame(dataset)
+    df.iloc[ :training_size].to_csv(training_file, index=False)
+    df.iloc[training_size: ].to_csv(testing_file, index=False)
 
-        assert dataset.shape == (SIZE, L + 2 + 2 * (N + 1)), f'{dataset.shape} error'
-        assert dataset[0].sum() - df.iloc[0].sum() < 0.00001, "pd read and load data not the same."
-
-        if debug == True:
-            fig, axs = plt.subplots(2)
-            axs[0].set_title('two cases anderson and chebyshev spectrum')
-            for i in range(2):
-                axs[i].plot(x_grid, Tfs[i])
-                axs[i].plot(omegas, Greens[i])
-            plt.show()
-            # inspect that area should be close to 1
-            area = np.sum((omegas[1:] - omegas[0:-1]) * (Green[1:]+Green[0:-1]))/2.0
-            print(f"area is : {area}")
-            print(omegas[:10])
-            print(Green[:10])
-            print(20*'-')
-            print(x_grid[:10])
-            print(Tf[:10])
-
+    assert dataset.shape == (SIZE, L + 2 + 2 * (N + 1)), f'{dataset.shape} error'
+    assert dataset[0].sum() - df.iloc[0].sum() < 0.00001, "pd read and load data not the same."

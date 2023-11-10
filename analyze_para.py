@@ -36,6 +36,7 @@ parameters = pd.read_csv(filepath_or_buffer='./datasets/paras.csv',
 
 Greens = np.array([])
 Tfs = np.array([])
+alphas = np.array([])
 for para in tqdm(parameters, desc='analysis plot data', leave=False):
     Green = model.spectral_function_fermion(omegas, para, eta=0.55)
     Greens = np.row_stack((Greens, Green.T)) if Greens.size else Green
@@ -46,6 +47,9 @@ for para in tqdm(parameters, desc='analysis plot data', leave=False):
     # 拟合alpha
     y_k = Green
     alpha = np.linalg.inv(T.T @ T) @ T.T @ y_k
+    alphas = np.row_stack((alphas, alpha)) if alphas.size else alpha
+    if len(alphas.shape) == 1:
+        alphas = np.expand_dims(alphas, axis=0)
 
     # 计算Tf
     Tf = T_pred @ alpha
@@ -55,15 +59,16 @@ for para in tqdm(parameters, desc='analysis plot data', leave=False):
 
 # plot spectrum, (omegas, Greens), (x_grid, Tfs)
 # for nn, we should keep T_pred,for predict
+# i need to add chebyshev alphas in file to analysis results errors.
 h5 = h5py.File(filename, 'w')
 omegas = np.expand_dims(omegas, axis=0)
 x_grid = np.expand_dims(x_grid, axis=0)
-T_pred = np.expand_dims(T_pred, axis=0)
 h5.create_dataset('omegas', data=omegas, dtype='float64')
 h5.create_dataset('Greens', data=Greens, dtype='float64')
 h5.create_dataset('x_grid', data=x_grid, dtype='float64')
 h5.create_dataset('Tfs', data=Tfs, dtype='float64')
 h5.create_dataset('T_pred', data=T_pred, dtype='float64')
+h5.create_dataset('cheby_alphas', data=alphas, dtype='float64')
 h5.close()
 
 # test
@@ -74,10 +79,12 @@ if test:
     x_grid_r = h5r['x_grid'][:]
     Tfs_r = h5r['Tfs'][:]
     T_pred_r = h5r['T_pred'][:]
+    alphas_r = h5r['cheby_alphas'][:]
     print(f'{omegas_r.shape}')
     assert omegas_r[0, :5].sum() == omegas[0, :5].sum(), 'omegas not the same.'
     assert Greens_r[0, :].sum() == Greens[0, :].sum(), 'Greens not the same.'
     assert x_grid_r.sum() == x_grid.sum(), 'x_grid not the same.'
     assert all(Tfs_r.sum(axis=0) == Tfs.sum(axis=0)), 'Tfs not the same.'
     assert all(T_pred_r.sum(axis=0) == T_pred.sum(axis=0)), 'T_pred not the same.'
+    assert all(alphas_r.sum(axis=0) == alphas.sum(axis=0)), 'alphas not the same.'
     h5r.close()
