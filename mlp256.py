@@ -225,7 +225,7 @@ num_models = 1
 
 if __name__ == "__main__":
     # hyper-parameters
-    config = load_config('config_L6_2.json')
+    config = load_config('config_L6_3.json')
     L, N = config["L"], config["N"]
     SIZE = config["SIZE"]
     RATIO = config["RATIO"]
