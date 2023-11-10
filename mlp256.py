@@ -56,12 +56,15 @@ class MyMLP(nn.Module):
         return x_1
 
 
+from torch.optim.lr_scheduler import StepLR
+
 def train(train_loader, validate_loader, input_d, ratio, n_epoch, criterion, lr, device, num_models=1):
     for chebyshev_i in range(num_models):
         # init model
         model = MyMLP(input_d, ratio=ratio).to(device=device)
         # 第 i 个 model 预测 第i个chebyshev 的系数
         opt = torch.optim.Adam(model.parameters(), lr=lr)
+        scheduler = StepLR(opt, step_size=15, gamma=0.1)
         model.double()
 
         for epoch in trange(n_epoch, desc='Training'):
@@ -92,7 +95,7 @@ def train(train_loader, validate_loader, input_d, ratio, n_epoch, criterion, lr,
                     once_batch = False
             print(f" epoch : {epoch+1}/{n_epoch}  train RMSE loss: {train_loss / len(train_loader):.10f}, train sample: {total_sample}")
             # save every 10 epoch
-            if (epoch + 1) % 10 == 0:
+            if (epoch + 1) % 5 == 0:
                 save_pt = f'mlp_models/e{epoch+1}_{chebyshev_i}th.pt'
                 torch.save(model.state_dict(), save_pt)
 
@@ -114,7 +117,11 @@ def train(train_loader, validate_loader, input_d, ratio, n_epoch, criterion, lr,
                     print(f" y_pred : {yv_pred[:10].flatten()}")
                     print(f"y_v: {y_v[:10].flatten()}")
                     once_batch = False 
-            print(f" epoch : {epoch+1}/{n_epoch}  validate RMSE loss: {validate_loss / len(validate_loader):.10f}, validate sample : {validate_sample}")
+            print(f" epoch : {epoch+1}/{n_epoch}  validate RMSE loss: \
+                  {validate_loss / len(validate_loader):.10f}, \
+                  validate sample : {validate_sample}")
+            scheduler.step()
+            print(f'Epoch-{epoch+1} lr: ' + f"{opt.param_groups[0]['lr']}")
 
         # save model
         torch.save(model.state_dict(),
