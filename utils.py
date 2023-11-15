@@ -109,3 +109,28 @@ def plot_spectrum(spectrum_filename, nn_alpha, nrows=8, ncols=4):
             axs[i, j].plot(x_grid, nn_Tfs[i * ncols + j], color='b')
     fig.suptitle('Greens, cheby_Tfs, nn_Tfs, spectrum plot')
     plt.show()
+
+
+def plot_loss(train_loss, valitate_loss, test_loss: int):
+    steps = np.array(range(len(train_loss)))
+    plt.plot(steps+1, train_loss, '-o', label='train loss')
+    plt.plot(steps+1, valitate_loss, '-o', label='validate loss')
+    plt.plot(steps[-1]+1, test_loss, '1', label='test loss')
+    plt.legend()
+    plt.show()
+
+def plot_loss_from_h5(filename='L6_3_loss.h5'):
+    h5 = h5py.File(filename, 'r')
+    fig, axs = plt.subplots(ncols=5, nrows=4)
+    for i in range(4):
+        for j in range(5):
+            idx = i*5+j
+            train = h5[f'model_{idx:03}']['train'][:]
+            validate = h5[f'model_{idx:03}']['validate'][:]
+            test = h5[f'model_{idx:03}']['test'][:]
+            axs[i, j].plot(np.array(range(len(train)))+1, train, '-o', label='train loss')
+            axs[i, j].plot(np.array(range(len(validate)))+1, validate, '-o', label='validate loss')
+            axs[i, j].plot(len(train), test[0], '1', label='test loss')
+    plt.show()
+    h5.close()
+    
