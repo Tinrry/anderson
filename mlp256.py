@@ -1,4 +1,3 @@
-import os
 import copy
 import numpy as np
 from tqdm import tqdm, trange
@@ -6,12 +5,8 @@ import h5py
 
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader, random_split
+from torch.optim.lr_scheduler import StepLR
 
-from utils import AndersonChebyshevDataset
-from utils import ToTensor
-from utils import plot_spectrum, load_config
-from utils import AndersonParas
 
 class MyMLP(nn.Module):
     def __init__(self, input_d, ratio=2) -> None:
@@ -27,20 +22,20 @@ class MyMLP(nn.Module):
             nn.ReLU(),
             nn.Linear(self.input_d * ratio, self.input_d * ratio * ratio),
             nn.ReLU(),
-            # nn.Linear(self.input_d * ratio**2, self.input_d * ratio**2),
-            # nn.ReLU(),
-            # nn.Linear(self.input_d * ratio**2, self.input_d * ratio**3),
-            # nn.ReLU(),
-            # nn.Linear(self.input_d * ratio**3, self.input_d * ratio**3),
-            # nn.ReLU(),
-            # nn.Linear(self.input_d * ratio**3, self.input_d * ratio**3),
-            # nn.ReLU(),
-            # nn.Linear(self.input_d * ratio**3, self.input_d * ratio**3),
-            # nn.ReLU(),
-            # nn.Linear(self.input_d * ratio**3, self.input_d * ratio**2),
-            # nn.ReLU(),
-            # nn.Linear(self.input_d * ratio**2, self.input_d * ratio**2),
-            # nn.ReLU(),
+            nn.Linear(self.input_d * ratio**2, self.input_d * ratio**2),
+            nn.ReLU(),
+            nn.Linear(self.input_d * ratio**2, self.input_d * ratio**3),
+            nn.ReLU(),
+            nn.Linear(self.input_d * ratio**3, self.input_d * ratio**3),
+            nn.ReLU(),
+            nn.Linear(self.input_d * ratio**3, self.input_d * ratio**3),
+            nn.ReLU(),
+            nn.Linear(self.input_d * ratio**3, self.input_d * ratio**3),
+            nn.ReLU(),
+            nn.Linear(self.input_d * ratio**3, self.input_d * ratio**2),
+            nn.ReLU(),
+            nn.Linear(self.input_d * ratio**2, self.input_d * ratio**2),
+            nn.ReLU(),
             nn.Linear(self.input_d * ratio**2, self.input_d * ratio),
             nn.ReLU(),
             nn.Linear(self.input_d * ratio, self.input_d * ratio),
@@ -56,14 +51,34 @@ class MyMLP(nn.Module):
         return x_1
 
 
-from torch.optim.lr_scheduler import StepLR
+def validate(validate_loader, model, chebyshev_i, criterion, device):
+    # validate loop
+    validate_loss = 0.0
+    once_batch = True
+    for x_v, y_v, _ in tqdm(validate_loader, leave=False):
+        x_v = x_v.to(device)
+        y_v = y_v.to(device)
+        yv_pred = model(x_v)
+        y_v = torch.squeeze(y_v)[:, chebyshev_i]
+        loss_v = torch.sqrt(criterion(yv_pred, y_v))
 
-def train(train_loader, validate_loader, input_d, ratio, n_epoch, criterion, lr, device, model_range):
-    loss_dict = {}
+        validate_loss += loss_v.detach().cpu().item()
+        if once_batch:
+            # we print 前10个样本的当前的预测值n-th order chebyshev alpha作为分析
+            print(f" y_pred : {yv_pred[:10].flatten()}")
+            print(f"y_v: {y_v[:10].flatten()}")
+            once_batch = False
+
+    validate_loss = validate_loss / len(validate_loader)
+    return validate_loss
+
+def train(train_loader, validate_loader, input_d, ratio, n_epoch, criterion, lr, device, model_range, config):
     # 以组的概念，保存好loss参数。TODO
-    loss_h5 = h5py.File("L6_3_loss.h5", 'w')
+    loss_f = config['config_loss']
+    loss_h5 = h5py.File(loss_f, 'w')
     for chebyshev_i in model_range:
         grp = loss_h5.create_group(f'model_{chebyshev_i:03}')
+        
         # init model
         model = MyMLP(input_d, ratio=ratio).to(device=device)
         # 第 i 个 model 预测 第i个chebyshev 的系数
@@ -77,7 +92,6 @@ def train(train_loader, validate_loader, input_d, ratio, n_epoch, criterion, lr,
         plot_validate_loss = []
         for epoch in trange(n_epoch, desc='Training'):
             train_loss = 0.0
-            validate_loss = 0.0
             total_sample = 0
 
             once_batch = True
@@ -102,114 +116,114 @@ def train(train_loader, validate_loader, input_d, ratio, n_epoch, criterion, lr,
                     print(f"y_batch: {y_batch[:10].flatten()}")
                     once_batch = False
             train_loss = train_loss / len(train_loader)
+            validate_loss = validate(validate_loader, model, chebyshev_i, criterion, device)
             plot_train_loss.append(train_loss)
+            plot_validate_loss.append(validate_loss)
             # save every 10 epoch
             if (epoch + 1) % 10 == 0:
-                print(f" epoch : {epoch+1}/{n_epoch}  train RMSE loss: {train_loss:.10f}, train sample: {total_sample}")
+                # save checkpoint
                 save_pt = f'mlp_models/e{epoch+1}_{chebyshev_i}th.pt'
                 torch.save(model.state_dict(), save_pt)
 
-            # validate loop
-            validate_sample = 0
-            once_batch = True
-            for x_v, y_v, _ in tqdm(validate_loader, desc=f'epoch {epoch+1} in validating', leave=False):
-                x_v = x_v.to(device)
-                y_v = y_v.to(device)
-                yv_pred = model(x_v)
-                y_v = torch.squeeze(y_v)[:, chebyshev_i]
-                loss_v = torch.sqrt(criterion(yv_pred, y_v))
-
-                # TODO plot
-                validate_loss += loss_v.detach().cpu().item()
-                validate_sample += len(x_v)
-                if once_batch:
-                   # we print 前10个样本的当前的预测值n-th order chebyshev alpha作为分析
-                    print(f" y_pred : {yv_pred[:10].flatten()}")
-                    print(f"y_v: {y_v[:10].flatten()}")
-                    once_batch = False 
-            
-            validate_loss = validate_loss / len(validate_loader)
-            plot_validate_loss.append(validate_loss)
-
-            if (epoch + 1) % 10 == 0:
+                print(f" epoch : {epoch+1}/{n_epoch}  train RMSE loss: {train_loss:.10f}, train sample: {total_sample}")
                 print(f" epoch : {epoch+1}/{n_epoch}  validate RMSE loss: \
-                    {validate_loss:.10f}, \
-                    validate sample : {validate_sample}")
-
+                    {validate_loss:.10f}")
+            
             scheduler.step()
             print(f'Epoch-{epoch+1} lr: ' + f"{opt.param_groups[0]['lr']}")
-            # loss_dict.update([(chebyshev_i, (plot_train_loss, plot_validate_loss))])
         grp.create_dataset('train', data=plot_train_loss)
         grp.create_dataset('validate', data=plot_validate_loss)
         # save model
         torch.save(model.state_dict(),
-                    f'./mlp_models/chebyshev_{chebyshev_i}.pt')
-    loss_h5.close()
-    return loss_dict   
+                    f'./mlp_models/chebyshev_{chebyshev_i}_{n_epoch}.pt')
+    loss_h5.close() 
 
 
-def get_alpha(model, plot_loader,  num_models, device=None, spectrum_filename=None):
-    alphas = np.array([])
-    if spectrum_filename:
-        hf = h5py.File(spectrum_filename, 'a')
-        if 'mlp_alphas' not in hf.keys():
-            alphas = _predict_alpha(model, plot_loader, num_models, device)
-            hf.create_dataset(name='mlp_alphas', data=alphas, dtype='float64')
-        hf.close()
-
-        # read data
-        hf = h5py.File(spectrum_filename, 'r')
-        alphas = hf['mlp_alphas'][:]
-        hf.close()
-    else:
-        alphas = _predict_alpha(model, plot_loader, num_models, device)
-
-    return alphas
-
-
-def _predict_alpha(model, plot_loader,  num_models, device=None):
-    alphas = np.array([])
-
-    # compute mlp alphas
-    for chebyshev_i in range(num_models):
-        model_i = get_model(
-            pre_name=config["pre_name"], model_skeleton=model, order=chebyshev_i)
-        model_i = model_i.to(device)
-        model_i.double()
-
-        n_alphas = np.array([])
-        test_sample = 0
-        with torch.no_grad():
-            for para  in tqdm(plot_loader, desc=f'predict paras nn alphas', leave=False):
-                para = para.to(device)
-                # TODO  we should modify paras as dataloader to user predict data.
-                y_pred = model_i(para)           # (batch_n, 1)
-                y_np = y_pred.cpu().numpy()
-                n_alphas = np.row_stack(
-                    (n_alphas, y_np)) if n_alphas.size else y_np
-
-        alphas = np.column_stack(
-            (alphas, n_alphas)) if alphas.size else n_alphas
-
-    return alphas
-
-
-def test(model, plot_loader,  model_range, criterion=None, device=None):
-    loss_dict = {}
-    loss_h5 = h5py.File("L6_3_loss.h5", 'a')
+def retrain(train_loader, validate_loader, input_d, ratio, n_epoch, criterion, relr, device, model_range, config):
+    loss_f = config['re_loss']
+    re_epoch = config['re_epoch']
+    loss_h5 = h5py.File(loss_f, 'w')
     for chebyshev_i in model_range:
         grp = loss_h5.require_group(f'model_{chebyshev_i:03}')
-        model_i = get_model(
-            pre_name=config["pre_name"], model_skeleton=model, order=chebyshev_i)
-        model_i = model_i.to(device)
-        model_i.double()
+        
+        # init model
+        model = MyMLP(input_d, ratio=ratio)
+        model.load_state_dict(torch.load(f'./mlp_models/chebyshev_{chebyshev_i}_70.pt'))
+        model.to(device).double()
+        # 第 i 个 model 预测 第i个chebyshev 的系数
+        step_size = config['step_size']
+        gamma = config['gamma']
+        opt = torch.optim.Adam(model.parameters(), lr=relr)
+        scheduler = StepLR(opt, step_size=step_size, gamma=gamma)
+
+        plot_train_loss = []
+        plot_validate_loss = []
+        for epoch in trange(re_epoch, desc='Training'):
+            train_loss = 0.0
+            total_sample = 0
+
+            once_batch = True
+            for x_batch, y_batch, _ in tqdm(train_loader, desc=f'epoch {epoch+1} in training', leave=False):
+                x_batch = x_batch.to(device)
+                y_batch = y_batch.to(device)
+                y_pred = model(x_batch)
+                y_batch = torch.squeeze(y_batch, dim=1)[:, chebyshev_i].flatten()
+                # turn MSE to RMSE
+                loss = torch.sqrt(criterion(y_pred, y_batch))
+                # backward
+                opt.zero_grad()
+                loss.backward()
+                # update parameters
+                opt.step()
+                # record loss and accuracy
+                train_loss += loss.detach().cpu().item()
+                total_sample += len(x_batch)
+                if once_batch:
+                    # we print 前10个样本的当前的预测值n-th order chebyshev alpha作为分析
+                    print(f" y_pred : {y_pred[:10].flatten()}")
+                    print(f"y_batch: {y_batch[:10].flatten()}")
+                    once_batch = False
+            train_loss = train_loss / len(train_loader)
+            validate_loss = validate(validate_loader, model, chebyshev_i, criterion, device)
+            plot_train_loss.append(train_loss)
+            plot_validate_loss.append(validate_loss)
+            # save every 10 epoch
+            if (epoch + 1) % 10 == 0:
+                # save checkpoint
+                save_pt = f'mlp_models/e{epoch+1+n_epoch}_{chebyshev_i}th.pt'
+                torch.save(model.state_dict(), save_pt)
+
+            print(f" epoch : {epoch+1 + n_epoch}/{n_epoch + n_epoch}  train RMSE loss: {train_loss:.10f}, train sample: {total_sample}")
+            print(f" epoch : {epoch+1 + n_epoch}/{n_epoch + n_epoch}  validate RMSE loss: \
+                    {validate_loss:.10f}")
+            
+            scheduler.step()
+            print(f'Epoch-{epoch+1+ n_epoch} lr: ' + f"{opt.param_groups[0]['lr']}")
+        grp.create_dataset('retrain', data=plot_train_loss)
+        grp.create_dataset('revalidate', data=plot_validate_loss)
+        # save model
+        torch.save(model.state_dict(),
+                    f'./mlp_models/chebyshev_{chebyshev_i}_{n_epoch + re_epoch}.pt')
+    loss_h5.close() 
+
+
+def test(model, plot_loader,  model_range, criterion, device, config):
+    loss_f = config['config_loss']
+    loss_h5 = h5py.File(loss_f, 'a')
+    finetune = bool(config['finetune'])
+    pre_name=config["pre_name"]
+    for chebyshev_i in model_range:
+        grp = loss_h5.require_group(f'model_{chebyshev_i:03}')
+        model_name = f'./mlp_models/{pre_name}_{chebyshev_i}.pt'
+        model.load_state_dict(torch.load(model_name))
+        model.to(device).double()
 
         test_loss = 0.0
         test_sample = 0
         with torch.no_grad():
             for x_batch, y_batch, _ in tqdm(plot_loader, desc=f'testing', leave=False):
                 x_batch, y_batch = x_batch.to(device), y_batch.to(device)
-                y_pred = model_i(x_batch)           # (batch_n, 1)
+                y_pred = model(x_batch)           # (batch_n, 1)
                 y_batch = torch.squeeze(y_batch, dim=1)[:, chebyshev_i]
                 loss = torch.sqrt(criterion(y_pred, y_batch))
                 test_loss += loss.detach().cpu().item()
@@ -218,98 +232,8 @@ def test(model, plot_loader,  model_range, criterion=None, device=None):
                 print(f'y_batch: {y_batch[:10].flatten()}')
                 break
             # print(f"for {chebyshev_i}th order, test loss : {test_loss / test_sample:.10f}, test sample: {test_sample}")
-            test_loss = test_loss / len(test_loader)
+            test_loss = test_loss / len(plot_loader)
             print(f"for {chebyshev_i}th order, test RMSE loss : {test_loss:.10f}, test sample: {test_sample}")
-        loss_dict.update([(chebyshev_i, test_loss)])
-        grp.create_dataset('test', data=[test_loss])
+        if 'test' not in grp:
+            grp.create_dataset('test', data=[test_loss])
     loss_h5.close()
-    return loss_dict
-
-
-def get_model(pre_name, model_skeleton, order=0):
-    # this method is specific in each model
-    model_name = f'./mlp_models/{pre_name}_{order}.pt'
-    model_skeleton.load_state_dict(torch.load(model_name))
-    return model_skeleton
-
-
-def get_models(pre_name, model_skeleton, model_range):
-    # this method is specific in each model
-    models = np.array([])
-    for chebyshev_i in model_range:
-        model_i = copy.deepcopy(model_skeleton)
-        model_name = f'./mlp_models/{pre_name}_{chebyshev_i}.pt'
-        model_i.load_state_dict(torch.load(model_name))
-        models = np.row_stack(
-            (models, model_i)) if models.size else np.array([[model_i]])
-
-    return models
-
-import matplotlib.pyplot as plt
-
-
-torch.manual_seed(123)
-train_model = False
-model_range = np.arange(256)
-
-
-if __name__ == "__main__":
-    # hyper-parameters
-    config = load_config('config_L6_3.json')
-    # config = load_config('config_debug.json')
-    L, N = config["L"], config["N"]
-    SIZE = config["SIZE"]
-    RATIO = config["RATIO"]
-    N_EPOCHS = config["N_EPOCHS"]
-    LR = config["LR"]
-    batch_size = config['batch_size']
-
-    pre_name = config["pre_name"]
-  
-
-
-    training_size = int(config["SIZE"] * 0.8)       # training: testing = 8: 2
-    training_file = os.path.join('datasets', f"L{L}N{N}_training_{training_size}.csv")
-    testing_file = os.path.join('datasets', f"L{L}N{N}_testing_{SIZE - training_size}.csv")
-    val_size = 500              # we use 500 in validate , 500 in test
-
-    input_d = L + 2
-    transform = ToTensor()
-    # transform = None
-    train_set = AndersonChebyshevDataset(
-        csv_file=training_file, L=L, n=N, transform=transform)
-
-    dataset = AndersonChebyshevDataset(
-        csv_file=testing_file, L=L, n=N, transform=transform)
-    test_size = len(dataset) - val_size
-    test_ds, val_ds = random_split(dataset, [val_size, test_size])
-
-    train_loader = DataLoader(train_set, shuffle=True, batch_size=batch_size)
-    test_loader = DataLoader(test_ds, shuffle=False, batch_size=batch_size)
-    validate_loader = DataLoader(val_ds, shuffle=False, batch_size=batch_size)
-
-    device = torch.device('cuda' if torch.cuda.is_available() else "cpu")
-    # 改成相对误差平均
-    criterious = nn.MSELoss()
-    # every time we save model in train function, and load model in compose_chebyshev_alpha, 256 models
-    # loss is too small
-    if train_model:
-        train_validate_loss = train(train_loader, 
-                                    validate_loader,
-                                    input_d=input_d, 
-                                    ratio=RATIO, 
-                                    n_epoch=N_EPOCHS,
-                                    criterion=criterious, 
-                                    lr=LR,
-                                    device=device, 
-                                    model_range=model_range)
-    model = MyMLP(input_d, RATIO)
-    # test_loss = test(model, test_loader, model_range, criterion=criterious, device=device)
-
-    # plot anderson parameters save in paras.csv
-    paras = config['paras']
-    plot_set = AndersonParas(csv_file=paras, L=L)
-    plot_loader = DataLoader(plot_set, shuffle=False, batch_size=32)        # just one batch
-    spectrum_f = config['spectrum_paras']
-    alphas = get_alpha(model, plot_loader=plot_loader, num_models=256, device=device,spectrum_filename='L6_3_alpha.h5')
-    plot_spectrum(spectrum_filename=spectrum_f, nn_alpha=alphas)

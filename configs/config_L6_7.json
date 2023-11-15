@@ -20,6 +20,8 @@
     "RATIO": 2,
     "step_size": 10,
     "gamma": 0.1,
+    "config_loss": "./config_L6_7/L6_7_loss.h5",
+    "_comment_v_loss": "0.00018",
 
     "_comment4": "specific for generate dataset",
     "SIZE": 5000,
