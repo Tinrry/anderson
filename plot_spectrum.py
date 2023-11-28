@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import h5py
 from tqdm import tqdm
@@ -27,10 +28,12 @@ def get_alpha(model, plot_loader,  num_models, device=None, alpha_filename=None,
 def _predict_alpha(model, plot_loader,  num_models, device, config):
     alphas = np.array([])
     pre_name=config["pre_name"]
+    model_path = config['model_path']
+    project_path = config['project_path']
 
     # compute mlp alphas
     for chebyshev_i in range(num_models):
-        model_name = f'./mlp_models/{pre_name}_{chebyshev_i}.pt'
+        model_name = os.path.join(project_path, model_path, f'{pre_name}_{chebyshev_i}.pt')
         model.load_state_dict(torch.load(model_name))
         model.to(device).double()
 

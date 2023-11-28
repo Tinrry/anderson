@@ -1,4 +1,7 @@
 {
+    "project_path": "/home/hhzheng/project/anderson",
+    "_comment_v_loss": "0.00018",
+
     "_comment1": "anderson",
     "L": 6,
     "N": 255,
@@ -20,15 +23,20 @@
     "RATIO": 2,
     "step_size": 10,
     "gamma": 0.1,
-    "config_loss": "./config_L6_7/L6_7_loss.h5",
-    "_comment_v_loss": "0.00018",
+    "model_path": "config_L6_7/models",
+    "retrain_model": "chebyshev_0_70.pt",
+    "config_alphas": "config_L6_7/L6_14_alpha.h5",
+    "config_loss": "config_L6_7/L6_7_loss.h5",
+
+    "_comment6": "retrain config",
+    "finetune": 0,
+    "re_epoch": 20,
+    "re_loss": "retrain_loss.h5",
 
     "_comment4": "specific for generate dataset",
     "SIZE": 5000,
 
     "_comment5": "plot paras.csv",
-    "paras": "./datasets/paras.csv",
-    "spectrum_paras": "L6N255_spectrum_32.h5",
-    "nrows": "8",
-    "ncols": "4"
+    "paras": "datasets/paras.csv",
+    "spectrum_paras": "datasets/L6N255_spectrum_32.h5"
 }

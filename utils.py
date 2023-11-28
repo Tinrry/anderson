@@ -1,4 +1,5 @@
 from json import load
+from typing import Any
 import numpy as np
 import pandas as pd
 import h5py
@@ -6,42 +7,92 @@ import matplotlib.pyplot as plt
 
 import torch
 from torch.utils.data import Dataset
+from torchvision import transforms
 
 
-def load_config(config_name):
-    with open(config_name) as f:
-        config = load(f)
-    return config
-
-class AndersonChebyshevDataset(Dataset):
+class AndersonDataset(Dataset):
     # anderson and chevbyshev datasets
 
-    def __init__(self, csv_file, L=6, n=255, transform=None):
-        super(AndersonChebyshevDataset, self).__init__()
+    def __init__(self, h5_file, L=6, n=255, transform=None):
+        super(AndersonDataset, self).__init__()
         self.L = L
         self.n = n
-        self.data = pd.read_csv(csv_file)
-        self.transform = transform
+        dataset = h5py.File(h5_file, 'r')
+        self.anderson = torch.tensor(np.array(dataset['anderson'], dtype=np.float64), dtype=torch.float64)
+        self.chebyshev = torch.tensor(np.array(dataset['chebyshev'], dtype=np.float64), dtype=torch.float64)
+        self.Greens = torch.tensor(np.array(dataset['Greens'], dtype=np.float64), dtype=torch.float64)
+                
+        self.transform = transform  
 
     def __len__(self):
-        return len(self.data)
+        return len(self.anderson)
 
     def __getitem__(self, index):
         if torch.is_tensor(index):
             index = index.tolist()
 
-        anderson = self.data.iloc[index, :self.L+2]
-        chebyshev = self.data.iloc[index, self.L+2: self.L + 2 + self.n + 1]
-        Greens = self.data.iloc[index, self.L + 2 + self.n + 1: ]
-        anderson = np.array([anderson])
-        chebyshev = np.array([chebyshev])
-        Greens = np.array([Greens])
-        sample = (anderson, chebyshev, Greens)
+        # anderson = self.data.iloc[index, :self.L+2]
+        # chebyshev = self.data.iloc[index, self.L+2: self.L + 2 + self.n + 1]
+        # Greens = self.data.iloc[index, self.L + 2 + self.n + 1: ]
+        # anderson = torch.tensor([anderson], dtype=torch.float64)
+        # chebyshev = torch.tensor([chebyshev], dtype=torch.float64)
+        # Greens = torch.tensor([Greens], dtype=torch.float64)
+        anderson = self.anderson[index, :, :, :]
+        chebyshev = self.chebyshev[index, :, :, :]
+        Greens = self.Greens[index, :, :, :]
 
+        sample = (anderson, chebyshev, Greens)
         if self.transform:
             sample = self.transform(sample)
 
         return sample
+
+
+# class AndersonChebyshevDataset(Dataset):
+#     # anderson and chevbyshev datasets
+
+#     def __init__(self, csv_file, L=6, n=255, transform=None):
+#         super(AndersonChebyshevDataset, self).__init__()
+#         self.L = L
+#         self.n = n
+#         data = np.array(pd.read_csv(csv_file))
+#         data = torch.tensor(data, dtype=torch.float64)
+#         # we expand data to (n, c, h, w) format
+#         n, w = data.shape
+#         self.data = data.view(n, w, 1, 1)
+#         self.anderson = self.data[:, :self.L+2, :, :]
+#         self.chebyshev = self.data[:, self.L+2: self.L + 2 + self.n + 1, :, :]
+#         self.Greens = self.data[:, self.L + 2 + self.n + 1:, :, :]
+                
+#         mean = self.data.mean(dim=0).squeeze()
+#         std = self.data.std(dim=0).squeeze()
+#         self.mean = (mean[:self.L+2], mean[self.L+2: self.L + 2 + self.n + 1])
+#         self.std = (std[:self.L+2], std[self.L+2: self.L + 2 + self.n + 1])
+#         self.transform = transform  
+
+#     def __len__(self):
+#         return len(self.data)
+
+#     def __getitem__(self, index):
+#         if torch.is_tensor(index):
+#             index = index.tolist()
+
+#         # anderson = self.data.iloc[index, :self.L+2]
+#         # chebyshev = self.data.iloc[index, self.L+2: self.L + 2 + self.n + 1]
+#         # Greens = self.data.iloc[index, self.L + 2 + self.n + 1: ]
+#         # anderson = torch.tensor([anderson], dtype=torch.float64)
+#         # chebyshev = torch.tensor([chebyshev], dtype=torch.float64)
+#         # Greens = torch.tensor([Greens], dtype=torch.float64)
+#         anderson = self.anderson[index, :, :, :]
+#         chebyshev = self.chebyshev[index, :, :, :]
+#         Greens = self.Greens[index, :, :, :]
+
+#         sample = (anderson, chebyshev, Greens)
+#         if self.transform:
+#             sample = self.transform(sample, self.mean, self.std)
+
+#         return sample
+
 
 class AndersonParas(Dataset):
     def __init__(self, csv_file, L=6):
@@ -61,23 +112,26 @@ class AndersonParas(Dataset):
         sample = (paras)
         
         return sample
+    
 
-
-class ToTensor(object):
-    """Convert ndarrays in sample to Tensors."""
+class Normalize(object):
+    """anderson input feature normalize"""
 
     def __call__(self, sample):
-        anderson_np, chebyshev_np, Greens_np = sample
-        anderson = torch.DoubleTensor(torch.from_numpy(anderson_np))
-        chebyshev = torch.DoubleTensor(torch.from_numpy(chebyshev_np))
-        Greens = torch.DoubleTensor(torch.from_numpy(Greens_np))
+        anderson = sample[0]
+        chebyshev = sample[1]
+        Greens = sample[2]
 
-        return (anderson, chebyshev, Greens)
+        # todo, mean and std should read from 4000_mean_std.h5
+        # 对一个图片进行处理 (c, h, w)
+        # n_anderson = transforms.Normalize(mean=mean[0], std=std[0])(anderson)
+        # n_chebyshev = transforms.Normalize(mean=mean[1], std=std[1])(chebyshev)
 
+        return (anderson, chebyshev, Greens)     
 
 
 # 公共函数
-def plot_spectrum(spectrum_filename, nn_alpha, nrows=8, ncols=4):
+def plot_spectrum(spectrum_filename, nn_alpha, n_pic=1):
     # plot Greens
     # plot chebyshev, TF, by alphas--labels
     # plot chebyshev, TF, by alphas--nn-predict
@@ -99,14 +153,14 @@ def plot_spectrum(spectrum_filename, nn_alpha, nrows=8, ncols=4):
         if len(nn_Tfs.shape) == 1:
             nn_Tfs = np.expand_dims(nn_Tfs, axis=0)
 
-    fig, axs = plt.subplots(ncols=ncols, nrows=nrows, sharex=True, sharey=True)
+    fig = plt.figure()
     omegas = np.squeeze(omegas, axis=0)
     x_grid = np.squeeze(x_grid, axis=0)
-    for i in range(nrows):
-        for j in range(ncols):
-            axs[i, j].plot(omegas, Greens[i * ncols + j], color='r')
-            axs[i, j].plot(x_grid, Tfs[i * ncols + j], color='g')
-            axs[i, j].plot(x_grid, nn_Tfs[i * ncols + j], color='b')
+    for i in range(n_pic):
+        axs = fig.add_subplot(1, n_pic, i+1)
+        axs.plot(omegas, Greens[i], color='r')
+        axs.plot(x_grid, Tfs[i], color='g')
+        axs.plot(x_grid, nn_Tfs[i], color='b')
     fig.suptitle('Greens, cheby_Tfs, nn_Tfs, spectrum plot')
     plt.show()
 
@@ -182,3 +236,9 @@ def plot_retrain_loss_scale(filename, chebyshev_i=0):
     fig.savefig(savename + '.png')
     plt.show()
     h5.close()
+
+
+def load_config(config_name):
+    with open(config_name) as f:
+        config = load(f)
+    return config

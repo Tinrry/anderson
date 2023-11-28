@@ -1,14 +1,16 @@
 {
+    "project_path": "/home/hhzheng/project/anderson",
+    "_comment_v_loss_4000": 0.0000897555,
+
     "_comment1": "anderson",
     "L": 6,
     "N": 255,
-    "N_EPOCHS": 70,
-    "LR": 0.005,
+    "n_epoch": 15,
+    "LR": 0.05,
     "batch_size": 2048,
     "X_MIN": -25,
     "X_MAX": 25,
     "_comment_layers": 14,
-    "_comment_v_loss": "0.0023",
 
     "_comment2": "specific for transformer model",
     "blocks": 2,
@@ -19,10 +21,14 @@
     "_comment3": "specific for mlp256 model",
     "pre_name": "chebyshev",
     "RATIO": 2,
-    "step_size": 10,
+    "step_size": 5,
     "gamma": 0.1,
+    "model_path": "mlp_models",
+    "config_loss": "L6_14_loss_debug.h5",
+    "retrain_model": "chebyshev_0_70.pt",
     "config_alphas": "L6_14_alpha.h5",
-    "config_loss": "L6_14_loss.h5",
+
+
     "_comment6": "retrain config",
     "finetune": 0,
     "re_epoch": 20,
@@ -33,7 +39,7 @@
 
     "_comment5": "plot paras.csv",
     "paras": "./datasets/paras.csv",
-    "spectrum_paras": "L6N255_spectrum_32.h5",
-    "nrows": "8",
-    "ncols": "4"
+    "spectrum_paras": "datasets/L6N255_spectrum_32.h5",
+    "nrows": 8,
+    "ncols": 4
 }

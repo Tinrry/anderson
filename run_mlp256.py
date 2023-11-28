@@ -4,14 +4,57 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, random_split
+from torchvision.transforms import transforms
 
-from utils import AndersonChebyshevDataset
-from utils import ToTensor
-from utils import plot_spectrum, load_config, plot_loss_scale, plot_retrain_loss_scale
+from utils import AndersonDataset
 from utils import AndersonParas
-from mlp256 import MyMLP
+from utils import Normalize
+from utils import plot_spectrum, load_config, plot_loss_scale, plot_retrain_loss_scale
 from mlp256 import train, test, retrain
 from plot_spectrum import get_alpha
+
+
+class MyMLP(nn.Module):
+    def __init__(self, input_d, ratio=2) -> None:
+        super(MyMLP, self).__init__()
+        self.input_d = input_d
+        self.ratio = ratio
+
+        self.flatten = nn.Flatten()
+        self.linear_relu_stack = nn.Sequential(
+            nn.Linear(self.input_d, self.input_d * ratio),
+            nn.ReLU(),
+            nn.Linear(self.input_d * ratio, self.input_d * ratio),
+            nn.ReLU(),
+            nn.Linear(self.input_d * ratio, self.input_d * ratio * ratio),
+            nn.ReLU(),
+            nn.Linear(self.input_d * ratio**2, self.input_d * ratio**2),
+            nn.ReLU(),
+            nn.Linear(self.input_d * ratio**2, self.input_d * ratio**3),
+            nn.ReLU(),
+            nn.Linear(self.input_d * ratio**3, self.input_d * ratio**3),
+            nn.ReLU(),
+            nn.Linear(self.input_d * ratio**3, self.input_d * ratio**3),
+            nn.ReLU(),
+            nn.Linear(self.input_d * ratio**3, self.input_d * ratio**3),
+            nn.ReLU(),
+            nn.Linear(self.input_d * ratio**3, self.input_d * ratio**2),
+            nn.ReLU(),
+            nn.Linear(self.input_d * ratio**2, self.input_d * ratio**2),
+            nn.ReLU(),
+            nn.Linear(self.input_d * ratio**2, self.input_d * ratio),
+            nn.ReLU(),
+            nn.Linear(self.input_d * ratio, self.input_d * ratio),
+            nn.ReLU(),
+            nn.Linear(self.input_d * ratio, self.input_d),
+            nn.ReLU(),
+            nn.Linear(self.input_d, 1)
+        )
+
+    def forward(self, x):
+        x = self.flatten(x)
+        x_1 = self.linear_relu_stack(x)
+        return x_1
 
 
 if __name__ == "__main__":
@@ -26,27 +69,30 @@ if __name__ == "__main__":
     L, N = config["L"], config["N"]
     SIZE = config["SIZE"]
     RATIO = config["RATIO"]
-    N_EPOCHS = config["N_EPOCHS"]
+    n_epoch = config["n_epoch"]
     LR = config["LR"]
     batch_size = config['batch_size']
     pre_name = config["pre_name"]
-    training_file = os.path.join('datasets', f"L{L}N{N}_10000.csv")
-    testing_file = os.path.join('datasets', f"L{L}N{N}_testing_1000.csv")
+    print_loss_file = config['config_loss']
+    print_reloss_file = config['re_loss']
+    training_file = os.path.join('datasets', f"L{L}N{N}_norm_4000.h5")
+    testing_file = os.path.join('datasets', f"L{L}N{N}_norm_testing_1000.h5")
     val_size = 500              # we use 500 in validate , 500 in test
 
     input_d = L + 2
-    transform = ToTensor()
-    # transform = None
-    train_set = AndersonChebyshevDataset(
-        csv_file=training_file, L=L, n=N, transform=transform)
+    # this transform is each item, so we can not normalize whole set
+    # item_norm = Normalize()         # 使用规范化的数据集，就不需要Normalize了。
+    train_set = AndersonDataset(
+        h5_file=training_file, L=L, n=N)
 
-    dataset = AndersonChebyshevDataset(
-        csv_file=testing_file, L=L, n=N, transform=transform)
-    test_size = len(dataset) - val_size
-    test_ds, val_ds = random_split(dataset, [val_size, test_size])
+    test_set = AndersonDataset(
+        h5_file=testing_file, L=L, n=N)
+
+    test_size = len(test_set) - val_size
+    test_ds, val_ds = random_split(test_set, [val_size, test_size])
 
     train_loader = DataLoader(train_set, shuffle=True, batch_size=batch_size)
-    test_loader = DataLoader(test_ds, shuffle=False, batch_size=batch_size)
+    test_loader = DataLoader(test_set, shuffle=False, batch_size=batch_size)
     validate_loader = DataLoader(val_ds, shuffle=False, batch_size=batch_size)
 
     device = torch.device('cuda' if torch.cuda.is_available() else "cpu")
@@ -58,34 +104,53 @@ if __name__ == "__main__":
 
     if train_model:
         if not finetune:
-            train(train_loader, 
-                validate_loader,
-                input_d=input_d, 
-                ratio=RATIO, 
-                n_epoch=N_EPOCHS,
-                criterion=criterious, 
-                lr=LR,
-                device=device, 
-                model_range=model_range,
-                config=config)
-            test(model, test_loader, model_range, criterion=criterious, device=device, config=config)
-            
-            plot_loss_scale(config['config_loss'])
+            train(model,
+                  train_loader, 
+                  validate_loader,
+                  n_epoch=n_epoch,
+                  criterion=criterious, 
+                  lr=LR,
+                  device=device, 
+                  model_range=model_range,
+                  config=config)
+            test(model, 
+                 test_loader, 
+                 model_range[:5], 
+                 criterion=criterious, 
+                 device=device,
+                 model_checkpoint=n_epoch,
+                 config=config)
+            # plot_loss_scale(print_loss_file)
         else:
-            retrain(train_loader, 
-                validate_loader,
-                input_d=input_d, 
-                ratio=RATIO, 
-                n_epoch=N_EPOCHS,
-                criterion=criterious, 
-                relr=5e-9,
-                device=device, 
-                model_range=model_range,
-                config=config)
-            test(model, test_loader, model_range, criterion=criterious, device=device, config=config)
-            plot_retrain_loss_scale(config['re_loss'])
+            retrain(model,
+                    train_loader, 
+                    validate_loader,
+                    n_epoch=n_epoch,
+                    criterion=criterious, 
+                    relr=5e-9,
+                    device=device, 
+                    model_range=model_range,
+                    config=config)
+            test(model, 
+                 test_loader, 
+                 model_range[:5], 
+                 criterion=criterious,
+                 device=device, 
+                 model_checkpoint=n_epoch,
+                 config=config)
+            # plot_retrain_loss_scale(print_reloss_file)
+    else:
+        test(model, 
+             test_loader, 
+             model_range[:1], 
+             criterion=criterious, 
+             device=device, 
+             model_checkpoint=n_epoch, 
+             config=config)
     
-
+    plot_loss_scale(print_loss_file)
+    
+# 可以考虑成为一个类
     if len(model_range) == 256:
         # plot anderson parameters save in paras.csv
         paras = config['paras']
