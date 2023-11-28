@@ -11,7 +11,7 @@ def validate(model, validate_loader, chebyshev_i, criterion, device):
     # validate loop
     validate_loss = 0.0
     once_batch = True
-    for x_v, y_v, _ in tqdm(validate_loader, leave=False):
+    for x_v, y_v, _, _ in tqdm(validate_loader, leave=False):
         x_v = x_v.to(device)
         y_v = y_v.to(device)
         yv_pred = model(x_v)
@@ -48,21 +48,35 @@ def train(model, train_loader, validate_loader, n_epoch, criterion, lr, device, 
         scheduler = StepLR(opt, step_size=step_size, gamma=gamma)
         plot_train_loss = []
         plot_validate_loss = []
+        plot_train_rescale_loss = []
         for epoch in trange(n_epoch, desc='Training'):
             train_loss = 0.0
+            train_rescale_loss = 0.0
             total_sample = 0
 
             once_batch = True
-            for x_batch, y_batch, _ in tqdm(train_loader, desc=f'epoch {epoch+1} in training', leave=False):
+            # FIXME 
+            for x_batch, y_batch, _, y_origin in tqdm(train_loader, desc=f'epoch {epoch+1} in training', leave=False):
                 x_batch = x_batch.to(device)
                 y_batch = y_batch.to(device)
+                y_origin = y_origin.to(device)
+
                 y_pred = model(x_batch)
                 y_batch = torch.squeeze(y_batch)[:, chebyshev_i]
-                # todo 优化代码结构 because we use normalize ,we compare original loss hear, inverse transform
-                # mean_h5 = h5py.File('4000_mean_std.h5', 'r')
-                # mean, std = mean_h5['chebyshev_mean'][chebyshev_i], mean_h5['chebyshev_std'][chebyshev_i]
-                # y_rescale = transforms.Compose([transforms.Normalize(mean=[0.], std = 1/std),
-                #                                 transforms.Normalize(mean=-mean, std=[1.]),])(y_pred)
+                # FIXME
+                if 'norm' in config["training_file"]:
+                # check loss
+                # todo 查看rescale后计算loss，与原先不进行Normalize的loss比较。
+                    mean_h5 = h5py.File('datasets/4000_mean_std.h5', 'r')
+                    mean, std = mean_h5['chebyshev_mean'][chebyshev_i], mean_h5['chebyshev_std'][chebyshev_i]
+                    y_pred = y_pred.view(len(y_pred), 1, 1, 1)
+                    y_rescale = transforms.Compose([transforms.Normalize(mean=[0.], std = 1/std),
+                                                    transforms.Normalize(mean=-mean, std=[1.]),])(y_pred)
+                    y_rescale = y_rescale.squeeze()
+                    # 将pred rescale 回原先数值后，查看loss
+                    loss_rescale = torch.sqrt(criterion(y_rescale, y_origin))
+                    train_rescale_loss += loss_rescale.detach().cpu().item()
+                    
                 # turn MSE to RMSE
                 loss = torch.sqrt(criterion(y_pred, y_batch))
                 # backward
@@ -79,9 +93,13 @@ def train(model, train_loader, validate_loader, n_epoch, criterion, lr, device, 
                     print(f"y_batch: {y_batch[:10].flatten()}")
                     once_batch = False
             train_loss = train_loss / len(train_loader)
+
             validate_loss = validate(model, validate_loader, chebyshev_i, criterion, device)
             plot_train_loss.append(train_loss)
             plot_validate_loss.append(validate_loss)
+            if train_rescale_loss != 0:
+                plot_train_rescale_loss.append(train_rescale_loss)
+
             # save every 10 epoch
             if (epoch + 1) % 10 == 0:
                 # save checkpoint
@@ -91,11 +109,17 @@ def train(model, train_loader, validate_loader, n_epoch, criterion, lr, device, 
             print(f" epoch : {epoch+1}/{n_epoch}  train RMSE loss: {train_loss:.10f}, train sample: {total_sample}")
             print(f" epoch : {epoch+1}/{n_epoch}  validate RMSE loss: \
                 {validate_loss:.10f}")
-            
+            if train_rescale_loss != 0:
+                print(f" epoch : {epoch+1}/{n_epoch}  rescale transforms RMSE loss: \
+                      {train_rescale_loss/len(train_loader):.10f}, train sample: {total_sample}")
+
+            # LR scheduler 
             scheduler.step()
             print(f'Epoch-{epoch+1} lr: ' + f"{opt.param_groups[0]['lr']}")
         grp.create_dataset('train', data=plot_train_loss)
         grp.create_dataset('validate', data=plot_validate_loss)
+        if len(plot_train_rescale_loss) > 0:
+            grp.create_dataset('train_rescale', data=plot_train_rescale_loss)
         # save final model
         save_pt = os.path.join(project_path, model_path, f'chebyshev_{chebyshev_i}_{n_epoch}.pt')
         torch.save(model.state_dict(), save_pt)
@@ -193,7 +217,7 @@ def test(model, plot_loader,  model_range, criterion, device,model_checkpoint, c
         test_loss = 0.0
         test_sample = 0
         with torch.no_grad():
-            for x_batch, y_batch, _ in tqdm(plot_loader, desc=f'testing', leave=False):
+            for x_batch, y_batch, _ , _ in tqdm(plot_loader, desc=f'testing', leave=False):
                 x_batch, y_batch = x_batch.to(device), y_batch.to(device)
                 y_pred = model(x_batch)           # (batch_n, 1)
                 y_batch = torch.squeeze(y_batch, dim=1)[:, chebyshev_i]

@@ -9,7 +9,7 @@ import torch
 from torch.utils.data import Dataset
 from torchvision import transforms
 
-
+# FIXME nor 增加 y_origin
 class AndersonDataset(Dataset):
     # anderson and chevbyshev datasets
 
@@ -18,9 +18,15 @@ class AndersonDataset(Dataset):
         self.L = L
         self.n = n
         dataset = h5py.File(h5_file, 'r')
-        self.anderson = torch.tensor(np.array(dataset['anderson'], dtype=np.float64), dtype=torch.float64)
-        self.chebyshev = torch.tensor(np.array(dataset['chebyshev'], dtype=np.float64), dtype=torch.float64)
-        self.Greens = torch.tensor(np.array(dataset['Greens'], dtype=np.float64), dtype=torch.float64)
+        t_data = lambda x: torch.tensor(np.array(x, dtype=np.float64), dtype=torch.float64)
+        self.anderson = t_data(dataset['anderson'])
+        self.chebyshev = t_data(dataset['chebyshev'])
+        self.Greens = t_data(dataset['Greens'])
+        if 'chebyshev_origin' in dataset.keys():
+            # FIXME 在norm格式的数据集里，保存原始的Chebyshev系数，为了查看loss。
+            self.chebyshev_origin = t_data(dataset['chebyshev_origin'])
+        else:
+            self.chebyshev_origin = t_data(dataset['chebyshev'])
                 
         self.transform = transform  
 
@@ -40,58 +46,13 @@ class AndersonDataset(Dataset):
         anderson = self.anderson[index, :, :, :]
         chebyshev = self.chebyshev[index, :, :, :]
         Greens = self.Greens[index, :, :, :]
+        chebyshev_origin = self.chebyshev_origin[index, :, :, :]
 
-        sample = (anderson, chebyshev, Greens)
+        sample = (anderson, chebyshev, Greens, chebyshev_origin)
         if self.transform:
             sample = self.transform(sample)
 
         return sample
-
-
-# class AndersonChebyshevDataset(Dataset):
-#     # anderson and chevbyshev datasets
-
-#     def __init__(self, csv_file, L=6, n=255, transform=None):
-#         super(AndersonChebyshevDataset, self).__init__()
-#         self.L = L
-#         self.n = n
-#         data = np.array(pd.read_csv(csv_file))
-#         data = torch.tensor(data, dtype=torch.float64)
-#         # we expand data to (n, c, h, w) format
-#         n, w = data.shape
-#         self.data = data.view(n, w, 1, 1)
-#         self.anderson = self.data[:, :self.L+2, :, :]
-#         self.chebyshev = self.data[:, self.L+2: self.L + 2 + self.n + 1, :, :]
-#         self.Greens = self.data[:, self.L + 2 + self.n + 1:, :, :]
-                
-#         mean = self.data.mean(dim=0).squeeze()
-#         std = self.data.std(dim=0).squeeze()
-#         self.mean = (mean[:self.L+2], mean[self.L+2: self.L + 2 + self.n + 1])
-#         self.std = (std[:self.L+2], std[self.L+2: self.L + 2 + self.n + 1])
-#         self.transform = transform  
-
-#     def __len__(self):
-#         return len(self.data)
-
-#     def __getitem__(self, index):
-#         if torch.is_tensor(index):
-#             index = index.tolist()
-
-#         # anderson = self.data.iloc[index, :self.L+2]
-#         # chebyshev = self.data.iloc[index, self.L+2: self.L + 2 + self.n + 1]
-#         # Greens = self.data.iloc[index, self.L + 2 + self.n + 1: ]
-#         # anderson = torch.tensor([anderson], dtype=torch.float64)
-#         # chebyshev = torch.tensor([chebyshev], dtype=torch.float64)
-#         # Greens = torch.tensor([Greens], dtype=torch.float64)
-#         anderson = self.anderson[index, :, :, :]
-#         chebyshev = self.chebyshev[index, :, :, :]
-#         Greens = self.Greens[index, :, :, :]
-
-#         sample = (anderson, chebyshev, Greens)
-#         if self.transform:
-#             sample = self.transform(sample, self.mean, self.std)
-
-#         return sample
 
 
 class AndersonParas(Dataset):
@@ -121,13 +82,14 @@ class Normalize(object):
         anderson = sample[0]
         chebyshev = sample[1]
         Greens = sample[2]
+        chebyshev_origin = sample[3]
 
         # todo, mean and std should read from 4000_mean_std.h5
         # 对一个图片进行处理 (c, h, w)
         # n_anderson = transforms.Normalize(mean=mean[0], std=std[0])(anderson)
         # n_chebyshev = transforms.Normalize(mean=mean[1], std=std[1])(chebyshev)
 
-        return (anderson, chebyshev, Greens)     
+        return (anderson, chebyshev, Greens, chebyshev_origin)     
 
 
 # 公共函数

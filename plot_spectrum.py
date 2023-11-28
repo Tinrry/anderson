@@ -39,6 +39,7 @@ def _predict_alpha(model, plot_loader,  num_models, device, config):
 
         n_alphas = np.array([])
         with torch.no_grad():
+            # FIXME
             for para  in tqdm(plot_loader, desc=f'predict paras nn alphas', leave=False):
                 para = para.to(device)
                 # TODO  we should modify paras as dataloader to user predict data.
