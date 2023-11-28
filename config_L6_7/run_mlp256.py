@@ -8,10 +8,8 @@ from torch.utils.data import DataLoader, random_split
 project_dir = os.path.join('/home/hhzheng/project/anderson')
 sys.path.append(project_dir)
 sys.path.append(os.getcwd())
-from utils import AndersonChebyshevDataset
 from utils import ToTensor
 from utils import plot_spectrum, load_config, plot_loss_scale, plot_retrain_loss_scale
-from utils import AndersonParas
 from mlp256 import train, test, retrain
 from plot_spectrum import get_alpha
 

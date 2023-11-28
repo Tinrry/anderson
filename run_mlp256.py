@@ -7,7 +7,6 @@ from torch.utils.data import DataLoader, random_split
 from torchvision.transforms import transforms
 
 from utils import AndersonDataset
-from utils import AndersonParas
 from utils import Normalize
 from utils import plot_spectrum, load_config, plot_loss_scale, plot_retrain_loss_scale
 from mlp256 import train, test, retrain
@@ -28,20 +27,6 @@ class MyMLP(nn.Module):
             nn.ReLU(),
             nn.Linear(self.input_d * ratio, self.input_d * ratio * ratio),
             nn.ReLU(),
-            nn.Linear(self.input_d * ratio**2, self.input_d * ratio**2),
-            nn.ReLU(),
-            nn.Linear(self.input_d * ratio**2, self.input_d * ratio**3),
-            nn.ReLU(),
-            nn.Linear(self.input_d * ratio**3, self.input_d * ratio**3),
-            nn.ReLU(),
-            nn.Linear(self.input_d * ratio**3, self.input_d * ratio**3),
-            nn.ReLU(),
-            nn.Linear(self.input_d * ratio**3, self.input_d * ratio**3),
-            nn.ReLU(),
-            nn.Linear(self.input_d * ratio**3, self.input_d * ratio**2),
-            nn.ReLU(),
-            nn.Linear(self.input_d * ratio**2, self.input_d * ratio**2),
-            nn.ReLU(),
             nn.Linear(self.input_d * ratio**2, self.input_d * ratio),
             nn.ReLU(),
             nn.Linear(self.input_d * ratio, self.input_d * ratio),
@@ -55,6 +40,48 @@ class MyMLP(nn.Module):
         x = self.flatten(x)
         x_1 = self.linear_relu_stack(x)
         return x_1
+
+# class MyMLP(nn.Module):
+#     def __init__(self, input_d, ratio=2) -> None:
+#         super(MyMLP, self).__init__()
+#         self.input_d = input_d
+#         self.ratio = ratio
+
+#         self.flatten = nn.Flatten()
+#         self.linear_relu_stack = nn.Sequential(
+#             nn.Linear(self.input_d, self.input_d * ratio),
+#             nn.ReLU(),
+#             nn.Linear(self.input_d * ratio, self.input_d * ratio),
+#             nn.ReLU(),
+#             nn.Linear(self.input_d * ratio, self.input_d * ratio * ratio),
+#             nn.ReLU(),
+#             nn.Linear(self.input_d * ratio**2, self.input_d * ratio**2),
+#             nn.ReLU(),
+#             nn.Linear(self.input_d * ratio**2, self.input_d * ratio**3),
+#             nn.ReLU(),
+#             nn.Linear(self.input_d * ratio**3, self.input_d * ratio**3),
+#             nn.ReLU(),
+#             nn.Linear(self.input_d * ratio**3, self.input_d * ratio**3),
+#             nn.ReLU(),
+#             nn.Linear(self.input_d * ratio**3, self.input_d * ratio**3),
+#             nn.ReLU(),
+#             nn.Linear(self.input_d * ratio**3, self.input_d * ratio**2),
+#             nn.ReLU(),
+#             nn.Linear(self.input_d * ratio**2, self.input_d * ratio**2),
+#             nn.ReLU(),
+#             nn.Linear(self.input_d * ratio**2, self.input_d * ratio),
+#             nn.ReLU(),
+#             nn.Linear(self.input_d * ratio, self.input_d * ratio),
+#             nn.ReLU(),
+#             nn.Linear(self.input_d * ratio, self.input_d),
+#             nn.ReLU(),
+#             nn.Linear(self.input_d, 1)
+#         )
+
+#     def forward(self, x):
+#         x = self.flatten(x)
+#         x_1 = self.linear_relu_stack(x)
+#         return x_1
 
 
 if __name__ == "__main__":
@@ -102,7 +129,8 @@ if __name__ == "__main__":
     # loss is too small
     model = MyMLP(input_d, RATIO)
 
-    if train_model:
+    # if train_model:
+    if 0:
         if not finetune:
             train(model,
                   train_loader, 
@@ -139,29 +167,42 @@ if __name__ == "__main__":
                  model_checkpoint=n_epoch,
                  config=config)
             # plot_retrain_loss_scale(print_reloss_file)
-    else:
-        test(model, 
-             test_loader, 
-             model_range[:1], 
-             criterion=criterious, 
-             device=device, 
-             model_checkpoint=n_epoch, 
-             config=config)
+    # else:
+    #     test(model, 
+    #          test_loader, 
+    #          model_range[:1], 
+    #          criterion=criterious, 
+    #          device=device, 
+    #          model_checkpoint=n_epoch, 
+    #          config=config)
     
-    plot_loss_scale(print_loss_file)
-    
+    # plot_loss_scale(print_loss_file)
+
+    plot_set = AndersonDataset(h5_file=training_file, L=L)
+    plot_loader = DataLoader(plot_set, shuffle=False, batch_size=32)        # just one batch
+    alphas_f = 'train_nn_alphas.h5'
+    alphas = get_alpha(model, 
+                        plot_loader=plot_loader,
+                        num_models=256, 
+                        device=device,
+                        alpha_filename=alphas_f, 
+                        config=config)
+          
 # 可以考虑成为一个类
     if len(model_range) == 256:
         # plot anderson parameters save in paras.csv
-        paras = config['paras']
-        plot_set = AndersonParas(csv_file=paras, L=L)
+        plot_set = AndersonDataset(h5_file=training_file, L=L)
         plot_loader = DataLoader(plot_set, shuffle=False, batch_size=32)        # just one batch
-        spectrum_f = config['spectrum_paras']
-        alphas_f = config["config_alphas"]
+        alphas_f = 'train_nn_alphas.h5'
         alphas = get_alpha(model, 
                             plot_loader=plot_loader,
                             num_models=256, 
                             device=device,
                             alpha_filename=alphas_f, 
                             config=config)
-        plot_spectrum(spectrum_filename=spectrum_f, nn_alpha=alphas)
+        
+        # FIXME train set don not need
+        if 0:
+            spectrum_f = config['spectrum_paras']
+            plot_spectrum(spectrum_filename=spectrum_f, nn_alpha=alphas)
+        

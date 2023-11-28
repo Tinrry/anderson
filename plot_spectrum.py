@@ -30,6 +30,7 @@ def _predict_alpha(model, plot_loader,  num_models, device, config):
     pre_name=config["pre_name"]
     model_path = config['model_path']
     project_path = config['project_path']
+    plot_size = config['plot_size']
 
     # compute mlp alphas
     for chebyshev_i in range(num_models):
@@ -40,13 +41,15 @@ def _predict_alpha(model, plot_loader,  num_models, device, config):
         n_alphas = np.array([])
         with torch.no_grad():
             # FIXME
-            for para  in tqdm(plot_loader, desc=f'predict paras nn alphas', leave=False):
-                para = para.to(device)
+            for anderson, _, _, _  in tqdm(plot_loader, desc=f'predict paras nn alphas', leave=False):
+                anderson = anderson.to(device)
                 # TODO  we should modify paras as dataloader to user predict data.
-                y_pred = model(para)           # (batch_n, 1)
+                y_pred = model(anderson)           # (batch_n, 1)
                 y_np = y_pred.cpu().numpy()
                 n_alphas = np.row_stack(
                     (n_alphas, y_np)) if n_alphas.size else y_np
+                if len(n_alphas) > plot_size:
+                    break
 
         alphas = np.column_stack(
             (alphas, n_alphas)) if alphas.size else n_alphas

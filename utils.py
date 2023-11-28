@@ -19,14 +19,22 @@ class AndersonDataset(Dataset):
         self.n = n
         dataset = h5py.File(h5_file, 'r')
         t_data = lambda x: torch.tensor(np.array(x, dtype=np.float64), dtype=torch.float64)
+
+        self.anderson = None
+        self.chebyshev = None
+        self.Greens = None
+        self.chebyshev_origin = None
         self.anderson = t_data(dataset['anderson'])
-        self.chebyshev = t_data(dataset['chebyshev'])
-        self.Greens = t_data(dataset['Greens'])
-        if 'chebyshev_origin' in dataset.keys():
-            # FIXME 在norm格式的数据集里，保存原始的Chebyshev系数，为了查看loss。
-            self.chebyshev_origin = t_data(dataset['chebyshev_origin'])
-        else:
-            self.chebyshev_origin = t_data(dataset['chebyshev'])
+        # 与plot param 数据集兼容。
+        if 'chebyshev' in dataset.keys():
+            self.chebyshev = t_data(dataset['chebyshev'])
+            if 'chebyshev_origin' in dataset.keys():
+                # FIXME 在norm格式的数据集里，保存原始的Chebyshev系数，为了查看loss。
+                self.chebyshev_origin = t_data(dataset['chebyshev_origin'])
+            else:
+                self.chebyshev_origin = t_data(dataset['chebyshev'])
+        if 'Greens' in dataset.keys():
+            self.Greens = t_data(dataset['Greens'])
                 
         self.transform = transform  
 
@@ -43,35 +51,27 @@ class AndersonDataset(Dataset):
         # anderson = torch.tensor([anderson], dtype=torch.float64)
         # chebyshev = torch.tensor([chebyshev], dtype=torch.float64)
         # Greens = torch.tensor([Greens], dtype=torch.float64)
-        anderson = self.anderson[index, :, :, :]
-        chebyshev = self.chebyshev[index, :, :, :]
-        Greens = self.Greens[index, :, :, :]
-        chebyshev_origin = self.chebyshev_origin[index, :, :, :]
+        if self.anderson is not None:
+            anderson = self.anderson[index, :, :, :]
+        else:
+            anderson = None
+        if self.chebyshev is not None:
+            chebyshev = self.chebyshev[index, :, :, :]
+        else:
+            chebyshev = None
+        if self.Greens is not None:
+            Greens = self.Greens[index, :, :, :]
+        else:
+            Greens = None
+        if self.chebyshev_origin is not None:
+            chebyshev_origin = self.chebyshev_origin[index, :, :, :]
+        else:
+            chebyshev_origin = None
 
         sample = (anderson, chebyshev, Greens, chebyshev_origin)
-        if self.transform:
+        if self.transform is not None:
             sample = self.transform(sample)
 
-        return sample
-
-
-class AndersonParas(Dataset):
-    def __init__(self, csv_file, L=6):
-        super(AndersonParas, self).__init__()
-        self.data = pd.read_csv(csv_file, delimiter=',', index_col=0, header=None)
-        self.L = L
-    
-    def __len__(self):
-        return len(self.data)
-    
-    def __getitem__(self, index):
-        if torch.is_tensor(index):
-            index = index.tolist()
-        
-        paras = self.data.iloc[index, :]
-        paras = torch.DoubleTensor(torch.from_numpy(np.array([paras])))
-        sample = (paras)
-        
         return sample
     
 
