@@ -8,42 +8,43 @@
     "L": 6,
     "N": 255,
     "n_epoch": 25,
-    "LR": 0.05,
+    "lr": 0.05,
     "batch_size": 2048,
-    "X_MIN": -25,
-    "X_MAX": 25,
-    "training_file": "datasets/L6N255_norm_4000.h5",
-    "_comment_layers": 14,
-
-    "_comment2": "specific for transformer model",
-    "blocks": 2,
-    "n_heads": 2,
-    "hidden_d": 8,
-    "model_name": "encoderL6.pt",
-
-    "_comment3": "specific for mlp256 model",
-
-    "RATIO": 2,
+    "training_file": "jupyter/chebyshev_0_4000.h5",
+    "testing_file": "datasets/L6N255_testing_1000.h5",
     "step_size": 10,
     "gamma": 1,
+    "model_order": 1,
+    
+    "_comment3": "specific for mlp256 model",
+    "_comment_layers": 7,
+    "RATIO": 2,
     
     "config_loss": "L6_14_loss_debug.h5",
-    "retrain_model": "chebyshev_0_70.pt",
     "config_alphas": "L6_14_alpha.h5",
-
+    
     "_comment6": "retrain config",
+    "retrain_model": "chebyshev_0_70.pt",
     "finetune": 0,
     "re_epoch": 20,
     "re_loss": "retrain_loss.h5",
-
-    "_comment4": "specific for generate dataset",
-    "SIZE": 5000,
 
     "_comment5": "plot paras.csv",
     "paras": "./datasets/paras.h5",
     "spectrum_paras": "datasets/L6N255_spectrum_32.h5",
     "nrows": 8,
     "ncols": 4,
+    "plot_size": 1,
 
-    "plot_size": 1
+    "_comment_datasets":  "attribute generate data",
+    "X_MIN": -25,
+    "X_MAX": 25,
+    "SIZE": 5000,
+
+    "_comment2": "specific for transformer model",
+    "blocks": 2,
+    "n_heads": 2,
+    "hidden_d": 8,
+    "model_name": "encoderL6.pt"
+
 }

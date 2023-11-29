@@ -13,9 +13,9 @@ from torchvision import transforms
 class AndersonDataset(Dataset):
     # anderson and chevbyshev datasets
 
-    def __init__(self, h5_file, L=6, n=255, transform=None):
+    def __init__(self, h5_file, l=6, n=255, transform=None):
         super(AndersonDataset, self).__init__()
-        self.L = L
+        self.L = l
         self.n = n
         dataset = h5py.File(h5_file, 'r')
         t_data = lambda x: torch.tensor(np.array(x, dtype=np.float64), dtype=torch.float64)
