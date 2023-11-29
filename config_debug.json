@@ -7,7 +7,7 @@
     "_comment1": "anderson",
     "L": 6,
     "N": 255,
-    "n_epoch": 25,
+    "n_epoch": 40,
     "lr": 0.05,
     "batch_size": 2048,
     "training_file": "jupyter/chebyshev_0_4000.h5",
@@ -15,12 +15,12 @@
     "step_size": 10,
     "gamma": 1,
     "model_order": 1,
+    "loss_file": "loss.h5",
     
     "_comment3": "specific for mlp256 model",
     "_comment_layers": 7,
     "RATIO": 2,
     
-    "config_loss": "L6_14_loss_debug.h5",
     "config_alphas": "L6_14_alpha.h5",
     
     "_comment6": "retrain config",

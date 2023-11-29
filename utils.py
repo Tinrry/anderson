@@ -20,10 +20,11 @@ class AndersonDataset(Dataset):
         dataset = h5py.File(h5_file, 'r')
         t_data = lambda x: torch.tensor(np.array(x, dtype=np.float64), dtype=torch.float64)
 
-        self.anderson = None
-        self.chebyshev = None
-        self.Greens = None
-        self.chebyshev_origin = None
+        self.anderson = torch.tensor([])
+        self.chebyshev = torch.tensor([])
+        self.Greens = torch.tensor([])
+        self.chebyshev_origin = torch.tensor([])
+
         self.anderson = t_data(dataset['anderson'])
         # 与plot param 数据集兼容。
         if 'chebyshev' in dataset.keys():
@@ -45,28 +46,22 @@ class AndersonDataset(Dataset):
         if torch.is_tensor(index):
             index = index.tolist()
 
-        # anderson = self.data.iloc[index, :self.L+2]
-        # chebyshev = self.data.iloc[index, self.L+2: self.L + 2 + self.n + 1]
-        # Greens = self.data.iloc[index, self.L + 2 + self.n + 1: ]
-        # anderson = torch.tensor([anderson], dtype=torch.float64)
-        # chebyshev = torch.tensor([chebyshev], dtype=torch.float64)
-        # Greens = torch.tensor([Greens], dtype=torch.float64)
-        if self.anderson is not None:
+        if len(self.anderson) != 0:
             anderson = self.anderson[index, :, :, :]
         else:
-            anderson = None
-        if self.chebyshev is not None:
+            anderson = torch.tensor([])
+        if len(self.chebyshev) != 0:
             chebyshev = self.chebyshev[index, :, :, :]
         else:
-            chebyshev = None
-        if self.Greens is not None:
+            chebyshev = torch.tensor([])
+        if len(self.Greens) != 0:
             Greens = self.Greens[index, :, :, :]
         else:
-            Greens = None
-        if self.chebyshev_origin is not None:
-            chebyshev_origin = self.chebyshev_origin[index, :, :, :]
+            Greens = torch.tensor([])
+        if len(self.chebyshev_origin) != 0:
+                chebyshev_origin = self.chebyshev_origin[index, :, :, :]
         else:
-            chebyshev_origin = None
+            chebyshev_origin = torch.tensor([])
 
         sample = (anderson, chebyshev, Greens, chebyshev_origin)
         if self.transform is not None:

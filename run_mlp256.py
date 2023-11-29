@@ -1,4 +1,3 @@
-import os
 import numpy as np
 
 import torch
@@ -25,7 +24,6 @@ if __name__ == "__main__":
     lr = config["lr"]
     batch_size = config['batch_size']
     training_file = config['training_file']
-    print_loss_file = config['config_loss']
 
     input_d = L + 2
     train_set = AndersonDataset(
@@ -45,17 +43,7 @@ if __name__ == "__main__":
           train_loader, 
           n_epoch=n_epoch,
           criterion=criterious,  
-          lr=lr, device=device,  
+          lr=lr, 
+          device=device,  
           model_range=model_range,
           config=config)
-
-    # plot_set = AndersonDataset(h5_file=training_file, l=L)
-    # plot_loader = DataLoader(plot_set, shuffle=False, batch_size=32)        # just one batch
-    # alphas_f = 'train_nn_alphas.h5'
-    # alphas = get_alpha(model, 
-    #                     plot_loader=plot_loader,
-    #                     num_models=256, 
-    #                     device=device,
-    #                     alpha_filename=alphas_f, 
-    #                     config=config)
-          
