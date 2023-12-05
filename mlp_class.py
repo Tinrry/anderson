@@ -6,6 +6,74 @@ import torch
 import torch.nn as nn
 from torch.optim.lr_scheduler import StepLR
 
+class MultiLayerP():
+    def __init__(self, network, lr, device) -> None:
+        self.network = network.to(device)
+        self.optimizer = torch.optim.Adam(self.network.parameters(), lr=lr)
+
+    def train(model, train_loader, n_epoch, criterion, lr, device, model_range, config):
+        # creating log
+        log_dict = {
+            'training_loss': [],
+            'validation_loss': [],
+            'training_accuracy': [],
+            'validation_accuracy': []
+        }
+        
+        loss_f = config['loss_file']
+        loss_h5 = h5py.File(loss_f, 'w')
+
+        for chebyshev_i in model_range:
+            grp = loss_h5.create_group(f'model_{chebyshev_i:03}')
+            
+            # init model
+            model.to(device=device).double()
+            # 第 i 个 model 预测 第i个chebyshev 的系数
+            step_size = config['step_size']
+            gamma = config['gamma']
+            opt = torch.optim.Adam(model.parameters(), lr=lr)
+            scheduler = StepLR(opt, step_size=step_size, gamma=gamma)
+            plot_train_loss = []
+            for epoch in trange(n_epoch, desc='Training'):
+                train_loss = 0.0
+                total_sample = 0
+
+                once_batch = True
+                # FIXME 
+                for x_batch, y_batch, _, _ in tqdm(train_loader, desc=f'epoch {epoch+1} in training', leave=False):
+                    x_batch = x_batch.to(device)
+                    y_batch = y_batch.to(device)
+
+                    y_pred = model(x_batch).squeeze()
+                    y_batch = y_batch[:, chebyshev_i, :, :].squeeze()
+                        
+                    # turn MSE to RMSE
+                    loss = torch.sqrt(criterion(y_pred, y_batch))
+                    # backward
+                    opt.zero_grad()
+                    loss.backward()
+                    # update parameters
+                    opt.step()
+                    # record loss and accuracy
+                    train_loss += loss.detach().cpu().item()
+                    total_sample += len(x_batch)
+                    if once_batch:
+                        # we print 前10个样本的当前的预测值n-th order chebyshev alpha作为分析
+                        print(f" y_pred : {y_pred[:10].flatten()}")
+                        print(f"y_batch: {y_batch[:10].flatten()}")
+                        once_batch = False
+                scheduler.step()
+                print(f'Epoch-{epoch+1} lr: ' + f"{opt.param_groups[0]['lr']}")
+
+                train_loss = train_loss / len(train_loader)
+                plot_train_loss.append(train_loss)
+                if validate:
+                    plot_validate_loss.append(validate(model, validate_loader=, chebyshev_i=))
+                print(f" epoch : {epoch+1}/{n_epoch}  train RMSE loss: {train_loss:.10f}, train sample: {total_sample}")
+
+            grp.create_dataset('train', data=plot_train_loss)
+
+        loss_h5.close() 
 
 def validate(model, validate_loader, chebyshev_i, criterion, device, config):
     # validate loop
@@ -33,61 +101,7 @@ def validate(model, validate_loader, chebyshev_i, criterion, device, config):
     return validate_loss
 
 
-def train(model, train_loader, n_epoch, criterion, lr, device, model_range, config):
-    loss_f = config['loss_file']
-    loss_h5 = h5py.File(loss_f, 'w')
 
-    for chebyshev_i in model_range:
-        grp = loss_h5.create_group(f'model_{chebyshev_i:03}')
-        
-        # init model
-        model.to(device=device).double()
-        # 第 i 个 model 预测 第i个chebyshev 的系数
-        step_size = config['step_size']
-        gamma = config['gamma']
-        opt = torch.optim.Adam(model.parameters(), lr=lr)
-        scheduler = StepLR(opt, step_size=step_size, gamma=gamma)
-        plot_train_loss = []
-        for epoch in trange(n_epoch, desc='Training'):
-            train_loss = 0.0
-            total_sample = 0
-
-            once_batch = True
-            # FIXME 
-            for x_batch, y_batch, _, _ in tqdm(train_loader, desc=f'epoch {epoch+1} in training', leave=False):
-                x_batch = x_batch.to(device)
-                y_batch = y_batch.to(device)
-
-                y_pred = model(x_batch).squeeze()
-                y_batch = y_batch[:, chebyshev_i, :, :].squeeze()
-                    
-                # turn MSE to RMSE
-                loss = torch.sqrt(criterion(y_pred, y_batch))
-                # backward
-                opt.zero_grad()
-                loss.backward()
-                # update parameters
-                opt.step()
-                # record loss and accuracy
-                train_loss += loss.detach().cpu().item()
-                total_sample += len(x_batch)
-                if once_batch:
-                    # we print 前10个样本的当前的预测值n-th order chebyshev alpha作为分析
-                    print(f" y_pred : {y_pred[:10].flatten()}")
-                    print(f"y_batch: {y_batch[:10].flatten()}")
-                    once_batch = False
-            scheduler.step()
-            print(f'Epoch-{epoch+1} lr: ' + f"{opt.param_groups[0]['lr']}")
-
-            train_loss = train_loss / len(train_loader)
-            plot_train_loss.append(train_loss)
-            if validate:
-                plot_validate_loss.append(validate(model, validate_loader=, chebyshev_i=))
-            print(f" epoch : {epoch+1}/{n_epoch}  train RMSE loss: {train_loss:.10f}, train sample: {total_sample}")
-
-        grp.create_dataset('train', data=plot_train_loss)
-
-    loss_h5.close() 
 
 
 def retrain(model, train_loader, validate_loader, n_epoch, criterion, relr, device, model_range, config):
