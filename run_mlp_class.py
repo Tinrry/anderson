@@ -25,8 +25,10 @@ if __name__ == "__main__":
     batch_size = config['batch_size']
     training_file = config['training_file']
     testing_file = config['testing_file']
-    step_size = config['set_size']
+    step_size = config['step_size']
     gamma = config['gamma']
+    hdf5_filename = config['loss_file']
+
 
     input_d = L + 2
     train_set = AndersonDataset(h5_file=training_file, l=L, n=N)
@@ -36,14 +38,13 @@ if __name__ == "__main__":
     val_loader = DataLoader(val_set, shuffle=False, batch_size=batch_size)
 
     device = torch.device('cuda' if torch.cuda.is_available() else "cpu")
-    # 改成相对误差平均
-    loss_function = torch.sqrt(nn.MSELoss())
+    # TODO 改成相对误差平均
+    loss_function = nn.MSELoss()
     # every time we save model in train function, and load model in compose_chebyshev_alpha, 256 models
     # loss is too small
     network = MyMLP_7(input_d)
     optimizer = torch.optim.Adam(network.parameters(), lr=lr)
     scehduler= StepLR(optimizer, step_size=step_size, gamma=gamma)
-    hdf5_filename = None
 
     model = MultiLayerP(network, 
                         loss_function,
