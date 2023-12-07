@@ -32,8 +32,9 @@ if __name__ == "__main__":
     device = torch.device('cuda' if torch.cuda.is_available() else "cpu")
 
     train_set = AndersonDataset(h5_file=training_file, device=device, l=L, n=N)
+    test_set = AndersonDataset(h5_file=testing_file, device=device, l=L, n=N)
     train_loader = DataLoader(train_set, shuffle=True, batch_size=batch_size)
-    test_set, val_set = random_split(AndersonDataset(h5_file=testing_file, device=device, l=L, n=N), [500, 500])
+    test_set, val_set = random_split(test_set, [500, 500])
 
     test_loader = DataLoader(test_set, shuffle=False, batch_size=batch_size)
     val_loader = DataLoader(val_set, shuffle=False, batch_size=batch_size)

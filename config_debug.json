@@ -5,7 +5,7 @@
     "_comment1": "anderson",
     "L": 6,
     "N": 255,
-    "n_epoch": 40,
+    "n_epoch": 4,
     "lr": 0.05,
     "batch_size": 2048,
     "training_file": "datasets/L6N255_norm_4000.h5",

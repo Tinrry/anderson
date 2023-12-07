@@ -19,9 +19,6 @@ class MultiLayerP():
         self.scheduler = scheduler
         self.hdf5_filename = save_hdf5
    
-    def predict(self, x):
-        return self.network(x)
-
     def train(self, optimizer, epochs, train_loader, val_loader=None):
         for chebyshev_i in self.chebyshev_model_range:
             # creating log
@@ -98,7 +95,6 @@ class MultiLayerP():
             
         return log_dict
 
-        
     def test(self, data_loader):
         for chebyshev_i in self.chebyshev_model_range:
             test_log_dict={
@@ -116,17 +112,17 @@ class MultiLayerP():
             if self.hdf5_filename:
                 self._save_hdf5(chebyshev_i, 'test_log_dict', test_log_dict)
 
+    @torch.no_grad
     def _inference(self, data_loader, chebyshev_i, log_list):
-        # test
-        with torch.no_grad():
-            for x_batch, y_batch, _, _ in tqdm(data_loader, leave=False):
+        self.network.eval()
+        for x_batch, y_batch, _, _ in tqdm(data_loader, leave=False):
 
-                y_pred = self.network(x_batch).squeeze()
-                y_batch = y_batch[:, chebyshev_i, :, :].squeeze()
-                loss = self.loss_function(y_pred, y_batch)
+            y_pred = self.network(x_batch).squeeze()
+            y_batch = y_batch[:, chebyshev_i, :, :].squeeze()
+            loss = self.loss_function(y_pred, y_batch)
 
-                log_list.append(loss.detach().cpu().item())
-            return log_list
+            log_list.append(loss.detach().cpu().item())
+        return log_list
 
     def _save_hdf5(self, chebyshev_i, name, data_dict):
         h5_handle = h5py.File(self.hdf5_filename, 'a')
