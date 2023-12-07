@@ -1,22 +1,25 @@
-from json import load
-from typing import Any
 import numpy as np
-import pandas as pd
 import h5py
+from json import load
 import matplotlib.pyplot as plt
 
 import torch
 from torch.utils.data import Dataset
-from torchvision import transforms
 
-# FIXME nor 增加 y_origin
+def load_config(config_name):
+    with open(config_name) as f:
+        config = load(f)
+    return config
+
+
 class AndersonDataset(Dataset):
     # anderson and chevbyshev datasets
 
-    def __init__(self, h5_file, l=6, n=255, transform=None):
+    def __init__(self, h5_file, device, l=6, n=255, transform=None):
         super(AndersonDataset, self).__init__()
         self.L = l
         self.n = n
+        self.device = device
         dataset = h5py.File(h5_file, 'r')
         t_data = lambda x: torch.tensor(np.array(x, dtype=np.float64), dtype=torch.float64)
 
@@ -63,7 +66,10 @@ class AndersonDataset(Dataset):
         else:
             chebyshev_origin = torch.tensor([])
 
-        sample = (anderson, chebyshev, Greens, chebyshev_origin)
+        sample = (anderson.to(self.device), 
+                  chebyshev.to(self.device), 
+                  Greens.to(self.device), 
+                  chebyshev_origin.to(self.device))
         if self.transform is not None:
             sample = self.transform(sample)
 
@@ -147,55 +153,3 @@ def plot_loss_from_h5(filename,ncols=5, nrows=4):
                 ax_i.legend()
     plt.show()
     h5.close()
-
-
-def plot_loss_scale(filename, chebyshev_i=0):
-    h5 = h5py.File(filename, 'r')
-    fig = plt.figure()
-    idx = 0
-    loss_scale = np.array([0, 10, 20, 30])         # 前面的loss太高了
-    
-    for begin in loss_scale:
-        if begin >= h5[f'model_{chebyshev_i:03}']['train'].shape[0]:
-            break
-        ax_i = fig.add_subplot(1, len(loss_scale), idx+1)
-        train = h5[f'model_{chebyshev_i:03}']['train'][begin:]
-        validate = h5[f'model_{chebyshev_i:03}']['validate'][begin:]
-        # test = h5[f'model_{chebyshev_i:03}']['test'][:]
-        ax_i.plot(np.array(range(len(train)))+1+begin, train, '-o', label='train loss')
-        ax_i.plot(np.array(range(len(validate)))+1+begin, validate, '-o', label='validate loss')
-        # ax_i.plot(len(train)+begin, test[0], '1', label='test loss')
-        idx += 1
-    fig.legend()
-    savename = filename.split('.')[0]
-    fig.savefig(savename + '.png')
-    plt.show()
-    h5.close()
-
-
-def plot_retrain_loss_scale(filename, chebyshev_i=0):
-    h5 = h5py.File(filename, 'r')
-    fig = plt.figure()
-    idx = 0
-    loss_scale = np.array([0, 5, 10, 15, 20])         # 前面的loss太高了
-    
-    for begin in loss_scale:
-        if begin >= h5[f'model_{chebyshev_i:03}']['retrain'].shape[0]:
-            break
-        ax_i = fig.add_subplot(1, len(loss_scale), idx+1)
-        train = h5[f'model_{chebyshev_i:03}']['retrain'][begin:]
-        validate = h5[f'model_{chebyshev_i:03}']['revalidate'][begin:]
-        ax_i.plot(np.array(range(len(train)))+1+begin, train, '-o', label='train loss')
-        ax_i.plot(np.array(range(len(validate)))+1+begin, validate, '-o', label='validate loss')
-        idx += 1
-    fig.legend()
-    savename = filename.split('.')[0]
-    fig.savefig(savename + '.png')
-    plt.show()
-    h5.close()
-
-
-def load_config(config_name):
-    with open(config_name) as f:
-        config = load(f)
-    return config

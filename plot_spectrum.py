@@ -5,6 +5,11 @@ from tqdm import tqdm
 
 import torch
 
+from json import load
+import numpy as np
+import h5py
+import matplotlib.pyplot as plt
+
 
 def get_alpha(model, plot_loader,  num_models, device=None, alpha_filename=None, config=None):
     alphas = np.array([])
@@ -55,3 +60,50 @@ def _predict_alpha(model, plot_loader,  num_models, device, config):
             (alphas, n_alphas)) if alphas.size else n_alphas
 
     return alphas
+
+
+
+def plot_loss_scale(filename, chebyshev_i=0):
+    h5 = h5py.File(filename, 'r')
+    fig = plt.figure()
+    idx = 0
+    loss_scale = np.array([0, 10, 20, 30])         # 前面的loss太高了
+    
+    for begin in loss_scale:
+        if begin >= h5[f'model_{chebyshev_i:03}']['train'].shape[0]:
+            break
+        ax_i = fig.add_subplot(1, len(loss_scale), idx+1)
+        train = h5[f'model_{chebyshev_i:03}']['train'][begin:]
+        validate = h5[f'model_{chebyshev_i:03}']['validate'][begin:]
+        # test = h5[f'model_{chebyshev_i:03}']['test'][:]
+        ax_i.plot(np.array(range(len(train)))+1+begin, train, '-o', label='train loss')
+        ax_i.plot(np.array(range(len(validate)))+1+begin, validate, '-o', label='validate loss')
+        # ax_i.plot(len(train)+begin, test[0], '1', label='test loss')
+        idx += 1
+    fig.legend()
+    savename = filename.split('.')[0]
+    fig.savefig(savename + '.png')
+    plt.show()
+    h5.close()
+
+
+def plot_retrain_loss_scale(filename, chebyshev_i=0):
+    h5 = h5py.File(filename, 'r')
+    fig = plt.figure()
+    idx = 0
+    loss_scale = np.array([0, 5, 10, 15, 20])         # 前面的loss太高了
+    
+    for begin in loss_scale:
+        if begin >= h5[f'model_{chebyshev_i:03}']['retrain'].shape[0]:
+            break
+        ax_i = fig.add_subplot(1, len(loss_scale), idx+1)
+        train = h5[f'model_{chebyshev_i:03}']['retrain'][begin:]
+        validate = h5[f'model_{chebyshev_i:03}']['revalidate'][begin:]
+        ax_i.plot(np.array(range(len(train)))+1+begin, train, '-o', label='train loss')
+        ax_i.plot(np.array(range(len(validate)))+1+begin, validate, '-o', label='validate loss')
+        idx += 1
+    fig.legend()
+    savename = filename.split('.')[0]
+    fig.savefig(savename + '.png')
+    plt.show()
+    h5.close()
