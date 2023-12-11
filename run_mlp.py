@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import logging
 
 import torch
 import torch.nn as nn
@@ -11,9 +12,28 @@ from utils import load_config
 from nn_models import MyMLP_14 as MyMLP
 from mlp import MultiLayerP
 
+# create a logger object
+logger = logging.getLogger(
+    " train-mlp"
+)
+# set the logging level
+logger.setLevel(logging.INFO)
+
+# create a console handler and set its level
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.DEBUG)
+
+# create formatter and add it to the console handler
+formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
+console_handler.setFormatter(formatter)
+
+logger.addHandler(console_handler)
+
+# log some messages
+# debug, info, warning, error, critical
 
 torch.manual_seed(123)
-def main(config_file):  
+def main(config_file, logger):  
     # hyper-parameters
     config = load_config(config_file)
 
@@ -55,7 +75,8 @@ def main(config_file):
                         loss_function,
                         chebyshev_model_range=model_range,
                         scheduler=scehduler, 
-                        save_hdf5=hdf5_filename)
+                        save_hdf5=hdf5_filename,
+                        logger = logger)
 
     train_log_dict = model.train(optimizer=optimizer, 
                            epochs=epochs, 
@@ -64,4 +85,4 @@ def main(config_file):
     test_log_dict = model.test(test_loader)
 
 
-main('config_debug.json')
+main('config_debug.json', logger=logger)

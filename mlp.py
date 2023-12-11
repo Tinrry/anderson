@@ -11,11 +11,14 @@ class MultiLayerP():
                  network, 
                  loss_function,
                  chebyshev_model_range, 
+                 logger,
                  scheduler=None, 
-                 save_hdf5=None) -> None:
+                 save_hdf5=None
+                 ) -> None:
         self.network = network
         self.loss_function = loss_function
         self.chebyshev_model_range = chebyshev_model_range
+        self.logger = logger
         self.scheduler = scheduler
         self.hdf5_filename = save_hdf5
    
@@ -70,28 +73,26 @@ class MultiLayerP():
                 log_dict['training_loss_per_batch'].append(loss.detach().cpu().item())
                 if once_batch:
                     # we print 前10个样本的当前的预测值n-th order chebyshev alpha作为分析
-                    print(f" y_pred : {y_pred[:10].flatten()}")
-                    print(f"y_batch: {y_batch[:10].flatten()}")
+                    self.logger.debug(f" y_pred : {y_pred[:10].flatten()}")
+                    self.logger.debug(f"y_batch: {y_batch[:10].flatten()}")
                     once_batch = False
             
             if self.scheduler is not None:
                 self.scheduler.step()
-                print(f' Epoch-{epoch+1}/{epochs} lr: ' + f"{optimizer.param_groups[0]['lr']:.5e}")
+                self.logger.debug(f' Epoch-{epoch+1}/{epochs} lr: ' + f"{optimizer.param_groups[0]['lr']:.5e}")
             
             train_loss_mean = np.array(log_dict['training_loss_per_batch']).mean()
             log_dict['training_loss_per_epoch'].append(train_loss_mean)
-            print()
-            print(f"Epoch : {epoch+1}/{epochs}  train loss: {train_loss_mean:.10f}")
+            self.logger.info(f"Epoch : {epoch+1}/{epochs}  train loss: {train_loss_mean:.10f}")
             
             # validation
             if val_loader:
                 val_list = []
                 self._inference(val_loader, chebyshev_i, val_list)
                 log_dict['validation_loss_per_batch'] = val_list
-                # print('-' * 10, 'validate', '-' * 10)
                 validation_loss_mean = np.array(log_dict['validation_loss_per_batch']).mean()
                 log_dict['validation_loss_per_epoch'].append(validation_loss_mean)
-                print(f"Epoch : {epoch+1}/{epochs}  validation loss: {validation_loss_mean:.10f}") 
+                self.logger.info(f" Epoch : {epoch+1}/{epochs}  validation loss: {validation_loss_mean:.10f}") 
             
         return log_dict
 
@@ -104,10 +105,10 @@ class MultiLayerP():
             log_list = []
             self._inference(data_loader, chebyshev_i, log_list)
             test_log_dict['test_loss_per_batch'] = log_list
-            print('-' * 10, f'test {chebyshev_i:03}', '-' * 10)
+            self.logger.info(f'test {chebyshev_i:03}')
             test_loss_mean = np.array(test_log_dict['test_loss_per_batch']).mean()
             test_log_dict['test_loss_per_epoch'].append(test_loss_mean)
-            print(f"Test loss: {test_loss_mean:.10f}") 
+            self.logger.info(f"Test loss: {test_loss_mean:.10f}") 
 
             if self.hdf5_filename:
                 self._save_hdf5(chebyshev_i, 'test_log_dict', test_log_dict)
