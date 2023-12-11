@@ -1,3 +1,4 @@
+import os
 import numpy as np
 
 import torch
@@ -12,10 +13,9 @@ from mlp import MultiLayerP
 
 
 torch.manual_seed(123)
-
-if __name__ == "__main__":    
+def main(config_file):  
     # hyper-parameters
-    config = load_config('config_debug.json')
+    config = load_config(config_file)
 
     L, N = config["L"], config["N"]
     model_range = np.arange(int(config['model_order']))
@@ -27,6 +27,9 @@ if __name__ == "__main__":
     step_size = config['step_size']
     gamma = config['gamma']
     hdf5_filename = config['loss_file']
+
+    if os.path.exists(hdf5_filename):
+        os.remove(hdf5_filename)
 
     input_d = L + 2
     device = torch.device('cuda' if torch.cuda.is_available() else "cpu")
@@ -59,3 +62,6 @@ if __name__ == "__main__":
                            train_loader=train_loader, 
                            val_loader=val_loader)
     test_log_dict = model.test(test_loader)
+
+
+main('config_debug.json')
