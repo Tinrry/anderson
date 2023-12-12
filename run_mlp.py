@@ -9,7 +9,7 @@ from torch.optim.lr_scheduler import StepLR
 
 from utils import AndersonDataset
 from utils import load_config
-from nn_models import MyMLP_7 as MyMLP
+from nn_models import MyMLP_14 as MyMLP
 from mlp import MultiLayerP
 
 torch.manual_seed(1)
@@ -86,4 +86,4 @@ def main(config_file, logger=logger):
     test_log_dict = model.test(test_loader)
 
 
-main('config_1.json', logger=logger)
+main('config_2.json', logger=logger)

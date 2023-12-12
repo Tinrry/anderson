@@ -27,15 +27,15 @@ class MultiLayerP():
             # creating log
             if val_loader:
                 log_dict = {
-                'training_loss_per_batch': [],
-                'training_loss_per_epoch': [],
-                'validation_loss_per_batch': [],
-                'validation_loss_per_epoch': []
+                'train_loss_per_batch': [],
+                'train_loss_per_epoch': [],
+                'validate_loss_per_batch': [],
+                'validate_loss_per_epoch': []
             }
             else:
                 log_dict = {
-                    'training_loss_per_batch': [],
-                    'training_loss_per_epoch': []
+                    'train_loss_per_batch': [],
+                    'train_loss_per_epoch': []
                 }
             self._train(optimizer, epochs, train_loader, val_loader, chebyshev_i, log_dict)
             
@@ -53,7 +53,7 @@ class MultiLayerP():
                 Module.bias.data.fill_(0.01)
 
         self.network.apply(init_weights)
-        # setting network to training mode
+        # setting network to mode
         self.network.train()
 
         for epoch in trange(epochs, desc='Training'):
@@ -81,19 +81,19 @@ class MultiLayerP():
             if self.scheduler is not None:
                 self.scheduler.step()
                 self.logger.debug(f' Epoch-{epoch+1}/{epochs} lr: ' + f"{optimizer.param_groups[0]['lr']:.5e}")
-            log_dict['training_loss_per_batch'].extend(this_epoch)
+            log_dict['train_loss_per_batch'].extend(this_epoch)
             train_loss_mean = np.array(this_epoch).mean()
-            log_dict['training_loss_per_epoch'].append(train_loss_mean)
+            log_dict['train_loss_per_epoch'].append(train_loss_mean)
             self.logger.info(f"Epoch : {epoch+1}/{epochs}  train loss: {train_loss_mean:.10f}")
             
             # validation
             if val_loader:
                 val_list = []
                 self._inference(val_loader, chebyshev_i, val_list)
-                log_dict['validation_loss_per_batch'].extend(val_list)
-                validation_loss_mean = np.array(val_list).mean()
-                log_dict['validation_loss_per_epoch'].append(validation_loss_mean)
-                self.logger.info(f" Epoch : {epoch+1}/{epochs}  validation loss: {validation_loss_mean:.10f}") 
+                log_dict['validate_loss_per_batch'].extend(val_list)
+                validate_loss_mean = np.array(val_list).mean()
+                log_dict['validate_loss_per_epoch'].append(validate_loss_mean)
+                self.logger.info(f" Epoch : {epoch+1}/{epochs}  validation loss: {validate_loss_mean:.10f}") 
             
         return log_dict
 
@@ -116,7 +116,6 @@ class MultiLayerP():
 
     @torch.no_grad
     def _inference(self, data_loader, chebyshev_i, log_list):
-        log_list = []
         self.network.eval()
         for x_batch, y_batch, _, _ in tqdm(data_loader, leave=False):
 
@@ -148,21 +147,21 @@ class MultiLayerP():
             chebyshev_i = self.chebyshev_model_range[0]
         h5_handle = h5py.File(self.hdf5_filename, 'r')
         grp_i = h5_handle.require_group(name=f'model_{chebyshev_i:03}')
-        training_loss_per_batch = []
-        training_loss_per_epoch = []
+        train_loss_per_batch = []
+        train_loss_per_epoch = []
         test_loss_per_batch = []
         test_loss_per_epoch = []
-        validation_loss_per_batch = []
-        validation_loss_per_epoch = []
+        validate_loss_per_batch = []
+        validate_loss_per_epoch = []
         if 'test_log_dict' in grp_i.keys():
             test_loss_per_batch = grp_i['test_log_dict']['test_loss_per_batch'][:]
             test_loss_per_epoch = grp_i['test_log_dict']['test_loss_per_epoch'][:]
         if 'log_dict' in grp_i.keys():
-            training_loss_per_batch = grp_i['log_dict']['training_loss_per_batch'][:]
-            training_loss_per_epoch = grp_i['log_dict']['training_loss_per_epoch'][:]
-            if 'validation_loss_per_batch' in grp_i['log_dict'].keys():
-                validation_loss_per_batch = grp_i['log_dict']['validation_loss_per_batch'][:]
-                validation_loss_per_epoch = grp_i['log_dict']['validation_loss_per_epoch'][:]
+            train_loss_per_batch = grp_i['log_dict']['train_loss_per_batch'][:]
+            train_loss_per_epoch = grp_i['log_dict']['train_loss_per_epoch'][:]
+            if 'validate_loss_per_batch' in grp_i['log_dict'].keys():
+                validate_loss_per_batch = grp_i['log_dict']['validate_loss_per_batch'][:]
+                validate_loss_per_epoch = grp_i['log_dict']['validate_loss_per_epoch'][:]
         
         h5_handle.close()
-        return (training_loss_per_batch, training_loss_per_epoch), (validation_loss_per_batch, validation_loss_per_epoch), (test_loss_per_batch, test_loss_per_epoch)
+        return (train_loss_per_batch, train_loss_per_epoch), (validate_loss_per_batch, validate_loss_per_epoch), (test_loss_per_batch, test_loss_per_epoch)
