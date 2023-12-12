@@ -58,6 +58,7 @@ class MultiLayerP():
 
         for epoch in trange(epochs, desc='Training'):
 
+            this_epoch = []
             once_batch = True
             for x_batch, y_batch, _, _ in tqdm(train_loader, desc=f'epoch {epoch+1} in training', leave=False):
                 y_pred = self.network(x_batch).squeeze()
@@ -70,7 +71,7 @@ class MultiLayerP():
                 # update parameters
                 optimizer.step()
                 # record loss and accuracy
-                log_dict['training_loss_per_batch'].append(loss.detach().cpu().item())
+                this_epoch.append(loss.detach().cpu().item())
                 if once_batch:
                     # we print 前10个样本的当前的预测值n-th order chebyshev alpha作为分析
                     self.logger.debug(f" y_pred : {y_pred[:10].flatten()}")
@@ -80,8 +81,8 @@ class MultiLayerP():
             if self.scheduler is not None:
                 self.scheduler.step()
                 self.logger.debug(f' Epoch-{epoch+1}/{epochs} lr: ' + f"{optimizer.param_groups[0]['lr']:.5e}")
-            
-            train_loss_mean = np.array(log_dict['training_loss_per_batch']).mean()
+            log_dict['training_loss_per_batch'].extend(this_epoch)
+            train_loss_mean = np.array(this_epoch).mean()
             log_dict['training_loss_per_epoch'].append(train_loss_mean)
             self.logger.info(f"Epoch : {epoch+1}/{epochs}  train loss: {train_loss_mean:.10f}")
             
@@ -89,8 +90,8 @@ class MultiLayerP():
             if val_loader:
                 val_list = []
                 self._inference(val_loader, chebyshev_i, val_list)
-                log_dict['validation_loss_per_batch'] = val_list
-                validation_loss_mean = np.array(log_dict['validation_loss_per_batch']).mean()
+                log_dict['validation_loss_per_batch'].extend(val_list)
+                validation_loss_mean = np.array(val_list).mean()
                 log_dict['validation_loss_per_epoch'].append(validation_loss_mean)
                 self.logger.info(f" Epoch : {epoch+1}/{epochs}  validation loss: {validation_loss_mean:.10f}") 
             
@@ -115,6 +116,7 @@ class MultiLayerP():
 
     @torch.no_grad
     def _inference(self, data_loader, chebyshev_i, log_list):
+        log_list = []
         self.network.eval()
         for x_batch, y_batch, _, _ in tqdm(data_loader, leave=False):
 

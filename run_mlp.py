@@ -9,8 +9,13 @@ from torch.optim.lr_scheduler import StepLR
 
 from utils import AndersonDataset
 from utils import load_config
-from nn_models import MyMLP_14 as MyMLP
+from nn_models import MyMLP_7 as MyMLP
 from mlp import MultiLayerP
+
+torch.manual_seed(1)
+
+# log some messages
+# debug, info, warning, error, critical
 
 # create a logger object
 logger = logging.getLogger(
@@ -21,7 +26,7 @@ logger.setLevel(logging.INFO)
 
 # create a console handler and set its level
 console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.DEBUG)
+# console_handler.setLevel(logLevel)
 
 # create formatter and add it to the console handler
 formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
@@ -29,11 +34,8 @@ console_handler.setFormatter(formatter)
 
 logger.addHandler(console_handler)
 
-# log some messages
-# debug, info, warning, error, critical
 
-torch.manual_seed(123)
-def main(config_file, logger):  
+def main(config_file, logger=logger):  
     # hyper-parameters
     config = load_config(config_file)
 
@@ -70,7 +72,6 @@ def main(config_file, logger):
     optimizer = torch.optim.Adam(network.parameters(), lr=lr)
     scehduler= StepLR(optimizer, step_size=step_size, gamma=gamma)
     network.to(device).double()
-
     model = MultiLayerP(network, 
                         loss_function,
                         chebyshev_model_range=model_range,
@@ -85,4 +86,4 @@ def main(config_file, logger):
     test_log_dict = model.test(test_loader)
 
 
-main('config_debug.json', logger=logger)
+main('config_1.json', logger=logger)
