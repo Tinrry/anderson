@@ -9,7 +9,6 @@ from torch.optim.lr_scheduler import StepLR
 
 from utils import AndersonDataset
 from utils import load_config
-from nn_models import MyMLP_14 as MyMLP
 from mlp import MultiLayerP
 
 torch.manual_seed(1)
@@ -35,7 +34,7 @@ console_handler.setFormatter(formatter)
 logger.addHandler(console_handler)
 
 
-def main(config_file, logger=logger):  
+def main(config_file, network, logger=logger):  
     # hyper-parameters
     config = load_config(config_file)
 
@@ -68,7 +67,7 @@ def main(config_file, logger=logger):
     loss_function = nn.MSELoss()
     # every time we save model in train function, and load model in compose_chebyshev_alpha, 256 models
     # loss is too small
-    network = MyMLP(input_d)
+    network = network(input_d)
     optimizer = torch.optim.Adam(network.parameters(), lr=lr)
     scehduler= StepLR(optimizer, step_size=step_size, gamma=gamma)
     network.to(device).double()
@@ -85,5 +84,6 @@ def main(config_file, logger=logger):
                            val_loader=val_loader)
     test_log_dict = model.test(test_loader)
 
-
-main('config_2.json', logger=logger)
+if __name__ == '__main__':
+    from nn_models import MyMLP_14 as MyMLP   
+    main('config_2.json', network=MyMLP)
