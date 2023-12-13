@@ -86,4 +86,4 @@ def main(config_file, network, logger=logger):
 
 if __name__ == '__main__':
     from nn_models import MyMLP_14 as MyMLP   
-    main('config_2.json', network=MyMLP)
+    main('config_4.json', network=MyMLP)
