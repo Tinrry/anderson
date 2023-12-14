@@ -40,7 +40,7 @@ class MultiLayerP():
             self._train(optimizer, epochs, train_loader, val_loader, chebyshev_i, log_dict)
             
             if self.hdf5_filename:
-                self._save_hdf5(chebyshev_i, 'log_dict', log_dict)
+                self._save_hdf5(chebyshev_i, log_dict)
 
     def _train(self, optimizer, epochs, train_loader, val_loader, chebyshev_i, log_dict):
         # defining weight initialization function
@@ -112,7 +112,7 @@ class MultiLayerP():
             self.logger.info(f"Test loss: {test_loss_mean:.10f}") 
 
             if self.hdf5_filename:
-                self._save_hdf5(chebyshev_i, 'test_log_dict', test_log_dict)
+                self._save_hdf5(chebyshev_i,  test_log_dict)
 
     @torch.no_grad
     def _inference(self, data_loader, chebyshev_i, log_list):
@@ -126,20 +126,16 @@ class MultiLayerP():
             log_list.append(loss.detach().cpu().item())
         return log_list
 
-    def _save_hdf5(self, chebyshev_i, name, data_dict):
+    def _save_hdf5(self, chebyshev_i, data_dict):
         h5_handle = h5py.File(self.hdf5_filename, 'a')
         model_index = f'model_{chebyshev_i:03}'
         if model_index  in h5_handle.keys():
             grp_i = h5_handle.require_group(model_index)
         else:
             grp_i = h5_handle.create_group(model_index)
-        if name in grp_i.keys():
-            grp_name = grp_i.require_group(name)
-        else:
-            grp_name = grp_i.create_group(name)
         # save dict in hdf5
         for k, v in data_dict.items():
-            grp_name.create_dataset(name=k, data=v)
+            grp_i.create_dataset(name=k, data=v)
         h5_handle.close()
 
     def read_hdf5(self, chebyshev_i=None):
@@ -153,15 +149,14 @@ class MultiLayerP():
         test_loss_per_epoch = []
         validate_loss_per_batch = []
         validate_loss_per_epoch = []
-        if 'test_log_dict' in grp_i.keys():
-            test_loss_per_batch = grp_i['test_log_dict']['test_loss_per_batch'][:]
-            test_loss_per_epoch = grp_i['test_log_dict']['test_loss_per_epoch'][:]
-        if 'log_dict' in grp_i.keys():
-            train_loss_per_batch = grp_i['log_dict']['train_loss_per_batch'][:]
-            train_loss_per_epoch = grp_i['log_dict']['train_loss_per_epoch'][:]
-            if 'validate_loss_per_batch' in grp_i['log_dict'].keys():
-                validate_loss_per_batch = grp_i['log_dict']['validate_loss_per_batch'][:]
-                validate_loss_per_epoch = grp_i['log_dict']['validate_loss_per_epoch'][:]
+        if 'test_loss_per_batch' in grp_i.keys():
+            test_loss_per_batch = grp_i['test_loss_per_batch'][:]
+            test_loss_per_epoch = grp_i['test_loss_per_epoch'][:]
+        train_loss_per_batch = grp_i['train_loss_per_batch'][:]
+        train_loss_per_epoch = grp_i['train_loss_per_epoch'][:]
+        if 'validate_loss_per_batch' in grp_i.keys():
+            validate_loss_per_batch = grp_i['validate_loss_per_batch'][:]
+            validate_loss_per_epoch = grp_i['validate_loss_per_epoch'][:]
         
         h5_handle.close()
         return (train_loss_per_batch, train_loss_per_epoch), (validate_loss_per_batch, validate_loss_per_epoch), (test_loss_per_batch, test_loss_per_epoch)
