@@ -5,13 +5,15 @@
     "_comment1": "anderson",
     "L": 6,
     "N": 255,
-    "n_epoch": 20,
+    "n_epoch": 30,
     "lr": 0.05,
-    "batch_size": 1024,
-    "training_file": "datasets/chebyshev_4000.h5",
-    "testing_file": "datasets/chebyshev_testing_1000.h5",
+    "batch_size": 2048,
+    "training_file": "datasets/norm_10000.h5",
+    "testing_file": "datasets/norm_testing_1000.h5",
     "step_size": 10,
     "gamma": 0.3,
     "model_order": 1,
-    "loss_file": "nn_14/loss_2.h5"
+
+    "_comment2": "result file",
+    "loss_file": "nn_14/loss_6.h5"
 }

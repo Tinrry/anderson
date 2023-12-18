@@ -9,7 +9,7 @@
     "lr": 0.05,
     "batch_size": 2048,
     "training_file": "datasets/norm_10000.h5",
-    "testing_file": "datasets/norm_test_1000.h5",
+    "testing_file": "datasets/norm_testing_1000.h5",
     "step_size": 10,
     "gamma": 0.3,
     "model_order": 1,
