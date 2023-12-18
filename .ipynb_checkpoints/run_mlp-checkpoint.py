@@ -34,7 +34,7 @@ console_handler.setFormatter(formatter)
 logger.addHandler(console_handler)
 
 
-def main(config_file, network, loss_file=None, logger=logger):  
+def main(config_file, network, logger=logger):  
     # hyper-parameters
     config = load_config(config_file)
 
@@ -47,11 +47,10 @@ def main(config_file, network, loss_file=None, logger=logger):
     testing_file = config['testing_file']
     step_size = config['step_size']
     gamma = config['gamma']
-    if loss_file is None:
-        loss_file = config['loss_file']
+    hdf5_filename = config['loss_file']
 
-    if os.path.exists(loss_file):
-        os.remove(loss_file)
+    if os.path.exists(hdf5_filename):
+        os.remove(hdf5_filename)
 
     input_d = L + 2
     device = torch.device('cuda' if torch.cuda.is_available() else "cpu")
@@ -76,7 +75,7 @@ def main(config_file, network, loss_file=None, logger=logger):
                         loss_function,
                         chebyshev_model_range=model_range,
                         scheduler=scehduler, 
-                        save_hdf5=loss_file,
+                        save_hdf5=hdf5_filename,
                         logger = logger)
 
     train_log_dict = model.train(optimizer=optimizer, 
