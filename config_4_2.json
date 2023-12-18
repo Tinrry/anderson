@@ -6,12 +6,13 @@
     "L": 6,
     "N": 255,
     "n_epoch": 20,
-    "lr": 0.05,
-    "batch_size": 1024,
-    "training_file": "datasets/norm_10000.h5",
-    "testing_file": "datasets/norm_testing_1000.h5",
+    "lr": 0.025,
+    "batch_size": 4096,
+    "training_file": "datasets/chebyshev_10000.h5",
+    "testing_file": "datasets/chebyshev_testing_1000.h5",
     "step_size": 10,
     "gamma": 0.3,
     "model_order": 1,
-    "loss_file": "nn_14/loss_5.h5"
+    
+    "loss_file": "nn_14/loss_4_2.h5"
 }

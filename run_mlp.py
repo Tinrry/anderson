@@ -34,7 +34,7 @@ console_handler.setFormatter(formatter)
 logger.addHandler(console_handler)
 
 
-def main(config_file, network, loss_file=None, logger=logger):  
+def main(config_file, network, layer_num=7, loss_file=None, logger=logger):  
     # hyper-parameters
     config = load_config(config_file)
 
@@ -68,7 +68,7 @@ def main(config_file, network, loss_file=None, logger=logger):
     loss_function = nn.MSELoss()
     # every time we save model in train function, and load model in compose_chebyshev_alpha, 256 models
     # loss is too small
-    network = network(input_d)
+    network = network(input_d, layer_num=layer_num)
     optimizer = torch.optim.Adam(network.parameters(), lr=lr)
     scehduler= StepLR(optimizer, step_size=step_size, gamma=gamma)
     network.to(device).double()
@@ -86,5 +86,5 @@ def main(config_file, network, loss_file=None, logger=logger):
     test_log_dict = model.test(test_loader)
 
 if __name__ == '__main__':
-    from nn_models import MyMLP_14 as MyMLP   
-    main('config_6.json', network=MyMLP)
+    from nn_models import MyMLP   
+    main('config_3.json', network=MyMLP, layer_num=14, loss_file='loss_config3_automodel.h5')
