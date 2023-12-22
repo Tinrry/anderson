@@ -47,11 +47,11 @@ def main(config_file, network, layer_num=7, loss_file=None, logger=logger):
     testing_file = config['testing_file']
     step_size = config['step_size']
     gamma = config['gamma']
-    if loss_file is None:
-        loss_file = config['loss_file']
-
-    if os.path.exists(loss_file):
-        os.remove(loss_file)
+    save_model = config['save_model']
+    # 创建一个文件，保存当前的训练结果，成功后再归档到对应的网络架构资料中。
+    loss_temp_file = 'loss.h5'
+    if os.path.exists(loss_temp_file):
+        os.remove(loss_temp_file)
 
     input_d = L + 2
     device = torch.device('cuda' if torch.cuda.is_available() else "cpu")
@@ -76,7 +76,8 @@ def main(config_file, network, layer_num=7, loss_file=None, logger=logger):
                         loss_function,
                         chebyshev_model_range=model_range,
                         scheduler=scehduler, 
-                        save_hdf5=loss_file,
+                        save_log=loss_temp_file,
+                        save_model=save_model,
                         logger = logger)
 
     train_log_dict = model.train(optimizer=optimizer, 
@@ -85,6 +86,15 @@ def main(config_file, network, layer_num=7, loss_file=None, logger=logger):
                            val_loader=val_loader)
     test_log_dict = model.test(test_loader)
 
+    # 避免训练一半，把原来的文件给删除了。
+    if loss_file is None:
+        loss_file = config['loss_file']
+
+    if os.path.exists(loss_file):
+        os.remove(loss_file)
+        os.rename(src=loss_temp_file, dst=loss_file)
+
+
 if __name__ == '__main__':
     from nn_models import MyMLP   
-    main('config_3.json', network=MyMLP, layer_num=14, loss_file='loss_config3_automodel.h5')
+    main('config_3.json', network=MyMLP, layer_num=14)

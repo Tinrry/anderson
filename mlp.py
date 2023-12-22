@@ -1,3 +1,4 @@
+import os
 from tqdm import tqdm, trange
 import h5py
 import numpy as np
@@ -13,14 +14,16 @@ class MultiLayerP():
                  chebyshev_model_range, 
                  logger,
                  scheduler=None, 
-                 save_hdf5=None
+                 save_log=None,
+                 save_model=None
                  ) -> None:
         self.network = network
         self.loss_function = loss_function
         self.chebyshev_model_range = chebyshev_model_range
         self.logger = logger
         self.scheduler = scheduler
-        self.hdf5_filename = save_hdf5
+        self.hdf5_filename = save_log
+        self.model_dir = save_model
    
     def train(self, optimizer, epochs, train_loader, val_loader=None):
         for chebyshev_i in self.chebyshev_model_range:
@@ -39,8 +42,11 @@ class MultiLayerP():
                 }
             self._train(optimizer, epochs, train_loader, val_loader, chebyshev_i, log_dict)
             
-            if self.hdf5_filename:
-                self._save_hdf5(chebyshev_i, log_dict)
+            if self.hdf5_filename is not None:
+                self._save_log(chebyshev_i, log_dict)
+            if self.model_dir is not None:
+                self._save_model(chebyshev_i)
+            
 
     def _train(self, optimizer, epochs, train_loader, val_loader, chebyshev_i, log_dict):
         # defining weight initialization function
@@ -89,7 +95,7 @@ class MultiLayerP():
             # validation
             if val_loader:
                 val_list = []
-                self._inference(val_loader, chebyshev_i, val_list)
+                self._inference(val_loader, self.network, chebyshev_i, val_list)
                 log_dict['validate_loss_per_batch'].extend(val_list)
                 validate_loss_mean = np.array(val_list).mean()
                 log_dict['validate_loss_per_epoch'].append(validate_loss_mean)
@@ -104,7 +110,12 @@ class MultiLayerP():
                 'test_loss_per_epoch': []
             }
             log_list = []
-            self._inference(data_loader, chebyshev_i, log_list)
+            if self.model_dir:
+                # this will load state dict to self.network
+                self._load_model(chebyshev_i)
+            
+            model = self.network
+            self._inference(data_loader, model, chebyshev_i, log_list)
             test_log_dict['test_loss_per_batch'] = log_list
             self.logger.info(f'test {chebyshev_i:03}')
             test_loss_mean = np.array(test_log_dict['test_loss_per_batch']).mean()
@@ -112,33 +123,31 @@ class MultiLayerP():
             self.logger.info(f"Test loss: {test_loss_mean:.10f}") 
 
             if self.hdf5_filename:
-                self._save_hdf5(chebyshev_i,  test_log_dict)
+                self._save_log(chebyshev_i,  test_log_dict)
 
     @torch.no_grad
-    def _inference(self, data_loader, chebyshev_i, log_list):
-        self.network.eval()
+    def _inference(self, data_loader, model, chebyshev_i, log_list):
+        
+        model.eval()
         for x_batch, y_batch, _, _ in tqdm(data_loader, leave=False):
 
-            y_pred = self.network(x_batch).squeeze()
+            y_pred = model(x_batch).squeeze()
             y_batch = y_batch[:, chebyshev_i, :, :].squeeze()
             loss = self.loss_function(y_pred, y_batch)
 
             log_list.append(loss.detach().cpu().item())
         return log_list
 
-    def _save_hdf5(self, chebyshev_i, data_dict):
+    def _save_log(self, chebyshev_i, data_dict):
         h5_handle = h5py.File(self.hdf5_filename, 'a')
         model_index = f'model_{chebyshev_i:03}'
-        if model_index  in h5_handle.keys():
-            grp_i = h5_handle.require_group(model_index)
-        else:
-            grp_i = h5_handle.create_group(model_index)
+        grp_i = h5_handle.require_group(model_index)
         # save dict in hdf5
         for k, v in data_dict.items():
             grp_i.create_dataset(name=k, data=v)
         h5_handle.close()
 
-    def read_hdf5(self, chebyshev_i=None):
+    def read_log(self, chebyshev_i=None):
         if chebyshev_i is None:
             chebyshev_i = self.chebyshev_model_range[0]
         h5_handle = h5py.File(self.hdf5_filename, 'r')
@@ -160,3 +169,26 @@ class MultiLayerP():
         
         h5_handle.close()
         return (train_loss_per_batch, train_loss_per_epoch), (validate_loss_per_batch, validate_loss_per_epoch), (test_loss_per_batch, test_loss_per_epoch)
+
+# todo 查看第二个模型分析如何下降loss
+    def _save_model(self, chebyshev_i=None):
+        if chebyshev_i is None:
+            chebyshev_i = self.chebyshev_model_range[0]
+        
+        if not os.path.exists(self.model_dir):
+            os.mkdir(self.model_dir)
+        save_file = os.path.join(self.model_dir, f"{chebyshev_i:03}.pth")
+        torch.save(self.network.state_dict(), save_file)
+    
+    def _load_model(self, chebyshev_i):
+        if chebyshev_i is None:
+            chebyshev_i = self.chebyshev_model_range[0]
+        
+        model_name = os.path.join(self.model_dir, f"{chebyshev_i:03}.pth")
+        checkpoint = torch.load(model_name)
+        self.network.load_state_dict(checkpoint)
+        try:
+            self.network.eval()
+        except AttributeError as error:
+            print(error)
+        return 
