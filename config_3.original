@@ -12,7 +12,7 @@
     "testing_file": "datasets/chebyshev_testing_1000.h5",
     "step_size": 10,
     "gamma": 0.3,
-    "model_order": 2,
+    "model_range": 2,
 
     "loss_file": "nn_14/loss_3_2.h5",
     "save_model": "nn_14/models_3/"
