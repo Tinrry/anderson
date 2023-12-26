@@ -46,6 +46,8 @@ def train_model(network, chebyshev_i, layer_num, loss_temp_file):
     step_size = config['step_size']
     gamma = config['gamma']
     save_model = config['save_model']
+    if len(save_model) == 0:
+        save_model = None           # 不保存模型
     
 
     input_d = L + 2
