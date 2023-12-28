@@ -1,0 +1,19 @@
+{
+    "project_path": "/home/hhzheng/project/anderson",
+    "pre_name": "chebyshev",
+    "model_type": "MyMLP_20",
+    "_comment1": "anderson",
+    "L": 6,
+    "N": 255,
+    "n_epoch": 40,
+    "lr": 1.25e-2,
+    "batch_size": 1024,
+    "training_file": "datasets/chebyshev_10000.h5",
+    "testing_file": "datasets/chebyshev_testing_1000.h5",
+    "step_size": 20,
+    "gamma": 0.4,
+    "model_range": "(1, 2)", 
+
+    "loss_file": "nn_20/loss_3_2.h5",
+    "save_model": ""
+}

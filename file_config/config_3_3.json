@@ -1,7 +1,7 @@
 {
     "project_path": "/home/hhzheng/project/anderson",
     "pre_name": "chebyshev",
-    "model_type": "MyMLP_14",
+    "model_type": "MyMLP_7",
     "_comment1": "anderson",
     "L": 6,
     "N": 255,
@@ -14,6 +14,6 @@
     "gamma": 0.4,
     "model_range": "(1, 2)", 
 
-    "loss_file": "nn_14/loss_3_lr4.5e-3-step_size20-e40.h5",
+    "loss_file": "nn_7/loss_3_3.h5",
     "save_model": ""
 }

@@ -171,3 +171,68 @@ def plot_loss_from_h5(filename,ncols=5, nrows=4):
                 ax_i.legend()
     plt.show()
     h5.close()
+
+
+def plot_loss_epoch(file, title, n_model='model_000', train_only=False, begin=0):
+    with h5py.File(file, 'r') as loss_f:
+        train_grp = loss_f[n_model]
+        train_loss = train_grp['train_loss_per_epoch'][:]
+        validate_loss = train_grp['validate_loss_per_epoch'][:]
+
+        test_loss = train_grp['test_loss_per_epoch'][:]
+        # plot mse rather rmse , make confuse
+        train_loss = np.array(train_loss)
+        validate_loss = np.array(validate_loss)
+        test_loss = np.array(test_loss)
+        # plt.figure(figsize=(15, 5))
+        plt.plot(np.arange(len(train_loss) - begin)+1 + begin, train_loss[begin:], '-o', label='train')
+        if train_only is False:
+            plt.plot(np.arange(len(validate_loss) - begin)+1 + begin, validate_loss[begin:], '-o', label='validate')
+        plt.plot(len(train_loss), test_loss[0], '-o', label='test')
+        
+        plt.grid()
+        plt.xlabel('Epoch')
+        plt.ylabel('MSE')
+        plt.yscale('log')
+        plt.title(label=title)
+        plt.legend()
+        print(f'train_loss mse: {train_loss[-5:]}')
+        print(f'validate_loss mse: {validate_loss[-5:]}')
+        print(f'test_loss mse: {test_loss}')
+        
+def compare_loss(file_1, file_2, n_model='model_000', title='none'):
+    fig, axes = plt.subplots(1,2, figsize=(12, 5))
+    fig.text(0.5, 0, 'Epoch')
+    fig.text(0, 0.5, 'MSE', rotation='vertical')
+    h5_1 = h5py.File(file_1, 'r')
+    train_grp_1 = h5_1[n_model]
+    train_loss_1 = train_grp_1['train_loss_per_epoch'][:]
+    validate_loss_1 = train_grp_1['validate_loss_per_epoch'][:]
+    test_loss_1 = train_grp_1['test_loss_per_epoch'][:]
+    print(f'file_1 train loss, mse: {train_loss_1[-5:]}')
+    print(f'file_1 test loss, mse: {test_loss_1}')
+
+    h5_2 = h5py.File(file_2, 'r')
+    train_grp_2 = h5_2[n_model]
+    train_loss_2 = train_grp_2['train_loss_per_epoch'][:]
+    validate_loss_2 = train_grp_2['validate_loss_per_epoch'][:]
+    # print(f'validate {validate_loss_2}')
+    test_loss_2 = train_grp_2['test_loss_per_epoch'][:]
+    print(f'file_2 train loss, mse: {train_loss_2[-5:]}')
+    print(f'file_2 test loss, mse: {test_loss_2}')
+    print()
+    
+    axes[0].plot(train_loss_1, '-o', label=f'{file_1}')
+    axes[0].plot(train_loss_2, '-o', label=f'{file_2}')
+    axes[0].set_title('train')
+    axes[0].legend()
+    axes[0].grid()
+    axes[0].set_yscale('log')
+    
+    axes[1].plot(validate_loss_1, '-o', label=f'{file_1}')
+    axes[1].plot(validate_loss_2, '-o', label=f'{file_2}')
+    axes[1].set_title('validate')
+    axes[1].legend()
+    axes[1].grid()
+    axes[1].set_yscale('log')
+    plt.show()

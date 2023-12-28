@@ -1,0 +1,19 @@
+{
+    "project_path": "/home/hhzheng/project/anderson",
+    "pre_name": "chebyshev",
+    "model_type": "MyMLP_14_Batchnorm",
+    "_comment1": "anderson",
+    "L": 6,
+    "N": 255,
+    "n_epoch": 5,
+    "lr": 3e-2,
+    "batch_size": 1024,
+    "training_file": "datasets/chebyshev_norm_10000.h5",
+    "testing_file": "datasets/chebyshev_norm_testing_1000.h5",
+    "step_size": 20,
+    "gamma": 0.8,
+    "model_range": "(0, 1)", 
+
+    "loss_file": "nn_14/loss_3_norm_bn.h5",
+    "save_model": ""
+}

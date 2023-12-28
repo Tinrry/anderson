@@ -31,7 +31,61 @@ class MyMLP_7(nn.Module):
         return x_1
     
 
+class MyMLP_14_Batchnorm(nn.Module):
+    def __init__(self, input_d, layer_num=14, ratio=2) -> None:
+        super(MyMLP_14_Batchnorm, self).__init__()
+        self.input_d = input_d
+        self.ratio = ratio
 
+        self.flatten = nn.Flatten()
+        self.linear_relu_stack = nn.Sequential( 
+            nn.Linear(self.input_d, self.input_d * ratio),
+            nn.BatchNorm1d(self.input_d * ratio),
+            nn.ReLU(),
+            nn.Linear(self.input_d * ratio, self.input_d * ratio),
+            nn.BatchNorm1d(self.input_d * ratio),
+            nn.ReLU(),
+            nn.Linear(self.input_d * ratio, self.input_d * ratio * ratio),
+            nn.BatchNorm1d(self.input_d * ratio**2),
+            nn.ReLU(),
+            nn.Linear(self.input_d * ratio**2, self.input_d * ratio**2),
+            nn.BatchNorm1d(self.input_d * ratio**2),
+            nn.ReLU(),
+            nn.Linear(self.input_d * ratio**2, self.input_d * ratio**3),
+            nn.BatchNorm1d(self.input_d * ratio**3),
+            nn.ReLU(),
+            nn.Linear(self.input_d * ratio**3, self.input_d * ratio**3),
+            nn.BatchNorm1d(self.input_d * ratio**3),
+            nn.ReLU(),
+            nn.Linear(self.input_d * ratio**3, self.input_d * ratio**3),
+            nn.BatchNorm1d(self.input_d * ratio**3),
+            nn.ReLU(),
+            nn.Linear(self.input_d * ratio**3, self.input_d * ratio**3),
+            nn.BatchNorm1d(self.input_d * ratio**3),
+            nn.ReLU(),
+            nn.Linear(self.input_d * ratio**3, self.input_d * ratio**2),
+            nn.BatchNorm1d(self.input_d * ratio**2),
+            nn.ReLU(),
+            nn.Linear(self.input_d * ratio**2, self.input_d * ratio**2),
+            nn.BatchNorm1d(self.input_d * ratio**2),
+            nn.ReLU(),
+            nn.Linear(self.input_d * ratio**2, self.input_d * ratio),
+            nn.BatchNorm1d(self.input_d * ratio),
+            nn.ReLU(),
+            nn.Linear(self.input_d * ratio, self.input_d * ratio),
+            nn.BatchNorm1d(self.input_d * ratio),
+            nn.ReLU(),
+            nn.Linear(self.input_d * ratio, self.input_d),
+            nn.BatchNorm1d(self.input_d ),
+            nn.ReLU(),
+            nn.Linear(self.input_d, 1)
+            # maxpool or avgpool
+        )
+
+    def forward(self, x):
+        x = self.flatten(x)
+        out = self.linear_relu_stack(x)
+        return out
 
 
 class MyMLP_14(nn.Module):
@@ -76,7 +130,7 @@ class MyMLP_14(nn.Module):
         out = self.linear_relu_stack(x)
         return out
 
-
+# use in MyMLP
 class BasicBlock(nn.Module):
     def __init__(self, input_d, output_d) -> None:
         super(BasicBlock, self).__init__()
@@ -91,6 +145,7 @@ class BasicBlock(nn.Module):
         return out
     
 
+# MyMLP layer genelization
 class MyMLP(nn.Module):
     def __init__(self, input_d, ratio=2, block: nn.Module=BasicBlock, layer_num=7) -> None:
         super(MyMLP, self).__init__()
@@ -250,7 +305,7 @@ import torch
 if __name__ == '__main__':
     tensor = torch.rand([10, 8, 1, 1])
     model_auto = MyMLP(input_d=8, ratio=2, block=BasicBlock, layer_num=20)
-    # print(model_auto)
+    print(model_auto)
     model_20 = MyMLP_20(input_d=8, ratio=2)
     # print(model_20)
 
