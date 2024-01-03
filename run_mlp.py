@@ -110,7 +110,8 @@ def main(network, layer_num=7, loss_file=None, logger=logger):
 
 
 if __name__ == '__main__':
-    from nn_models import MyMLP_14_Batchnorm 
+    # from nn_models import MyMLP_14_Batchnorm 
+    from nn_models import MyMLP
     # hyper-parameters
-    config = load_config('config_3_norm.json') 
-    main(network=MyMLP_14_Batchnorm, layer_num=14)
+    config = load_config('config_model0_cnorm.json') 
+    main(network=MyMLP, layer_num=7)
